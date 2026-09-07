@@ -14,6 +14,16 @@ Claude Code and Codex quota percentages, reset times, and usage forecasts for th
 
 Forecasts use average consumption since the quota window began. They are estimates of allowance consumption, not additional charges or a measurement of the last few minutes' activity.
 
+## Preview
+
+Synthetic values; the interface follows the active Omarchy theme.
+
+![Both providers visible together in the bar](screenshots/headroom-bar.png)
+
+| Light | Dark |
+| --- | --- |
+| ![Light panel with synthetic quota readings](screenshots/headroom-light.png) | ![Dark panel with synthetic quota readings](screenshots/headroom-dark.png) |
+
 ## Requirements
 
 - Omarchy with the Quattro shell, native plugin services, and `omarchy-agent-usage-claude` / `omarchy-agent-usage-codex` collectors.
@@ -55,6 +65,8 @@ If an update still shows the old behavior, run `omarchy restart shell` to clear 
 ## Development
 
 The shell creates one `Service.qml` for all monitors. It runs `bin/headroom-collect`; `Model.js` and `Pace.js` normalize display state and calculate forecasts. `BarWidget.qml` hosts the native `Panel.qml` lifecycle.
+
+Interface conventions are recorded in [DESIGN.md](DESIGN.md).
 
 Run the checks with Node.js, Python 3, Qt 6 qmllint and Omarchy installed:
 
