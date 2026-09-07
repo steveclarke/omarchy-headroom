@@ -1,0 +1,219 @@
+#!/usr/bin/env python3
+"""Run Omarchy collectors and emit only validated quota observations.
+
+No provider API calls or credentials live here. Claude's public record timestamp
+describes execution, so correlate its separate successful-probe cache before
+allowing a forecast. Unknown cache contracts fail closed.
+"""
+import concurrent.futures
+import datetime as dt
+import json
+import math
+import os
+from pathlib import Path
+import re
+import selectors
+import signal
+import subprocess
+import threading
+import time
+
+MAX_OUTPUT = 4 * 1024 * 1024
+TIMEOUT = 55
+ACTIVE = set()
+ACTIVE_LOCK = threading.Lock()
+
+
+class CollectionError(Exception):
+    pass
+
+
+def stop_children(*_):
+    with ACTIVE_LOCK:
+        for pid in ACTIVE:
+            try:
+                os.killpg(pid, signal.SIGKILL)
+            except ProcessLookupError:
+                pass
+
+
+def terminate(signum, frame):
+    stop_children()
+    raise SystemExit(128 + signum)
+
+
+def run_collector(command, timeout=TIMEOUT):
+    """Bound runtime and output; terminate the collector's app-server subtree."""
+    try:
+        proc = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
+                                start_new_session=True)
+    except OSError as exc:
+        raise CollectionError("Collector unavailable · update Omarchy") from exc
+    with ACTIVE_LOCK:
+        ACTIVE.add(proc.pid)
+    output = bytearray()
+    deadline = time.monotonic() + timeout
+    try:
+        with selectors.DefaultSelector() as selector:
+            selector.register(proc.stdout, selectors.EVENT_READ)
+            while True:
+                if time.monotonic() >= deadline:
+                    raise CollectionError("Usage check timed out · try refreshing")
+                if not selector.select(min(0.2, max(0, deadline - time.monotonic()))):
+                    continue
+                chunk = os.read(proc.stdout.fileno(), 65536)
+                if not chunk:
+                    break
+                output.extend(chunk)
+                if len(output) > MAX_OUTPUT:
+                    raise CollectionError("Collector output too large · update Omarchy")
+        try:
+            code = proc.wait(timeout=max(0.01, deadline - time.monotonic()))
+        except subprocess.TimeoutExpired as exc:
+            raise CollectionError("Usage check timed out · try refreshing") from exc
+        if code != 0:
+            raise CollectionError("Usage check failed · try refreshing")
+        try:
+            value = json.loads(output)
+        except (ValueError, UnicodeError) as exc:
+            raise CollectionError("Could not read usage · update Omarchy") from exc
+        if not isinstance(value, dict):
+            raise CollectionError("Could not read usage · update Omarchy")
+        return value
+    finally:
+        try:
+            os.killpg(proc.pid, signal.SIGKILL)
+        except ProcessLookupError:
+            pass
+        proc.wait()
+        proc.stdout.close()
+        with ACTIVE_LOCK:
+            ACTIVE.discard(proc.pid)
+
+
+def numeric(value):
+    return isinstance(value, (int, float)) and not isinstance(value, bool) and math.isfinite(value)
+
+
+def epoch(value):
+    if not isinstance(value, str) or not value:
+        return 0
+    try:
+        date = dt.datetime.fromisoformat(value.replace("Z", "+00:00"))
+        if date.tzinfo is None:
+            return 0
+        return date.timestamp() * 1000
+    except (ValueError, OverflowError, OSError):
+        return 0
+
+
+def clean(value, limit=80):
+    if not isinstance(value, str):
+        return ""
+    return "".join(c for c in value if c.isprintable())[:limit]
+
+
+def normalize_window(entry, provider):
+    if not isinstance(entry, dict) or not numeric(entry.get("percent")) or entry["percent"] < 0:
+        return None
+    label = clean(entry.get("label"))
+    title = clean(entry.get("title")) or label
+    duration = 0
+    identity = "detail:" + title
+    if label in ("Session (5-hour)", "Session (5h)"):
+        identity, title, duration = "session", "Session", 18000000
+    elif label in ("Weekly (7-day)", "Weekly"):
+        identity, title, duration = "weekly", "Weekly", 604800000
+    elif provider == "claude" and title == "Fable Weekly":
+        identity, duration = "fable-weekly", 604800000
+    elif provider == "codex":
+        match = re.fullmatch(r"([1-9][0-9]{0,5})(h|m) window", label)
+        if match:
+            duration = int(match[1]) * (3600000 if match[2] == "h" else 60000)
+            if duration == 604800000:
+                identity, title = "weekly", "Weekly"
+            elif duration < 86400000:
+                identity, title = "session", "Session" if duration == 18000000 else label
+    # A future native collector can supply an explicit duration. Unknown or
+    # implausible periods still display their percentage without a forecast.
+    seconds = entry.get("windowSeconds")
+    if numeric(seconds) and 0 < seconds <= 366 * 86400:
+        duration = seconds * 1000
+    if duration > 366 * 86400000:
+        duration = 0
+    return {"id": identity, "title": title or "Limit", "used": entry["percent"],
+            "resetAt": epoch(entry.get("resetsAt")), "durationMs": duration}
+
+
+def read_probe_cache(path):
+    try:
+        with path.open("rb") as stream:
+            raw = stream.read(MAX_OUTPUT + 1)
+        if len(raw) > MAX_OUTPUT:
+            return None
+        doc = json.loads(raw)
+        return doc if isinstance(doc, dict) else None
+    except (OSError, ValueError):
+        return None
+
+
+def observation(record, provider, started, finished, cache_before=None, cache_after=None):
+    if record.get("schemaVersion") != 1 or record.get("id") != provider:
+        raise CollectionError("Collector format changed · update Headroom")
+    if record.get("usageStatusText"):
+        status = str(record["usageStatusText"]).lower()
+        if "auth" in status or "sign-in" in status:
+            raise CollectionError("Sign in with the provider CLI, then refresh")
+        raise CollectionError("Live usage unavailable · try refreshing")
+    limits = record.get("limits")
+    if not isinstance(limits, list) or len(limits) > 50:
+        raise CollectionError("Collector format changed · update Headroom")
+    windows = [normalize_window(entry, provider) for entry in limits]
+    if any(w is None for w in windows):
+        raise CollectionError("Collector returned invalid limits · try refreshing")
+    if not windows:
+        raise CollectionError("No subscription limits reported")
+    observed = finished
+    state, message = "fresh", ""
+    if provider == "claude":
+        stamp = cache_after.get("fetchedAtMs") if cache_after else None
+        previous = cache_before.get("fetchedAtMs") if cache_before else None
+        verified = (numeric(stamp) and started - 1000 <= stamp <= finished + 5000
+                    and stamp != previous and cache_after.get("limits") == limits)
+        if verified:
+            observed = stamp
+        else:
+            observed = 0
+            state, message = "stale", "Last reading · a fresh Claude check could not be verified"
+    return {"id": provider, "name": "Claude Code" if provider == "claude" else "Codex",
+            "plan": clean(record.get("tierLabel"), 40), "state": state, "message": message,
+            "observedAt": observed, "windows": windows}
+
+
+def collect(provider):
+    cache = Path(os.environ.get("XDG_CACHE_HOME", str(Path.home() / ".cache"))) / "omarchy/agent-usage/claude-limits.json"
+    before = read_probe_cache(cache) if provider == "claude" else None
+    started = time.time() * 1000
+    try:
+        record = run_collector(["omarchy-agent-usage-" + provider, "--limits-only"])
+        finished = time.time() * 1000
+        after = read_probe_cache(cache) if provider == "claude" else None
+        # Reading twice catches a concurrent cache replacement during matching.
+        if provider == "claude" and after != read_probe_cache(cache):
+            after = None
+        return observation(record, provider, started, finished, before, after)
+    except CollectionError as exc:
+        return {"id": provider, "name": "Claude Code" if provider == "claude" else "Codex",
+                "plan": "", "state": "unavailable", "message": str(exc), "observedAt": 0, "windows": []}
+
+
+def main():
+    signal.signal(signal.SIGTERM, terminate)
+    signal.signal(signal.SIGINT, terminate)
+    with concurrent.futures.ThreadPoolExecutor(max_workers=2) as pool:
+        providers = list(pool.map(collect, ("claude", "codex")))
+    print(json.dumps({"schema": 1, "providers": providers}, allow_nan=False))
+
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "id": "io.github.steveclarke.headroom",
+  "name": "Headroom",
+  "version": "0.1.0",
+  "author": "Steve Clarke",
+  "license": "MIT",
+  "description": "Claude Code and Codex quota percentages, reset times, and usage forecasts.",
+  "kinds": ["service", "bar-widget"],
+  "entryPoints": {"service": "Service.qml", "barWidget": "BarWidget.qml"},
+  "barWidget": {
+    "displayName": "Headroom",
+    "category": "AI",
+    "allowMultiple": false,
+    "defaultSection": "right"
+  }
+}
