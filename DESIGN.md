@@ -23,7 +23,7 @@ The native shell supplies theme colors, scaling, and panel behavior. `Panel.qml`
 
 - Rounded outer surface with quiet inset groups.
 - Strong headings and amounts, subdued supporting text.
-- Provider color confined to the cost split; shared theme accent for allowance.
+- Provider color confined to the cost split; shared theme accent for healthy allowance, yellow and red for warnings.
 - Explicit text for unavailable readings, resets, and forecast warnings.
 
 ## Colors
@@ -32,7 +32,7 @@ The palette follows the active Omarchy theme, with two fixed colors for the cost
 
 ### Primary
 
-Quota fills use `Color.accent`. The accent is shared by both providers and does not change with forecast severity.
+Healthy quota fills use `Color.accent`, shared by both providers. A tight projected buffer uses yellow; a limit warning uses the urgency color. `Pace.severity()` owns the state and `meterColor()` maps it to these roles.
 
 ### Secondary
 
@@ -42,11 +42,11 @@ The warm coral `cost-claude` and green teal `cost-codex` identify providers in t
 
 Popup text uses `Color.popups.text`. The popup surface uses `Color.popups.background`, mixed 68% toward white when its HSL lightness exceeds 0.5. Inset groups mix that surface 3.5% toward the foreground; meter tracks mix the group 14% toward the foreground. The period-selector bed uses a quieter 5.5% group-to-foreground mix.
 
-Secondary text begins with a foreground-to-surface mix. `legible()` adjusts it toward the foreground against the selector bed; caution and urgency use the same adjustment against the group. The function seeks a calculated contrast ratio of at least 4.65, with the popup foreground as its fallback. Theme-derived colors remain expressions, not captured light/dark hex palettes.
+Secondary text begins with a foreground-to-surface mix. `legible()` adjusts it toward the foreground against the selector bed; urgency uses the same adjustment against the group. The function seeks a calculated contrast ratio of at least 4.65, with the popup foreground as its fallback. Theme-derived colors remain expressions, not captured light/dark hex palettes.
 
-Caution starts from a theme-dependent amber; urgency starts from `Color.urgent`. The bar uses `WidgetButton.foreground`, including the shell's wallpaper-aware contrast, and the bar's urgent color for flame warnings.
+Caution is a meter color: `#c49a16` on a light surface and `#edc35b` on a dark surface. Urgency starts from `Color.urgent`. Warning text stays secondary; only the flame takes the urgency color. The bar uses `WidgetButton.foreground`, including the shell's wallpaper-aware contrast, and the bar's urgent color for flame warnings.
 
-**The Separate Roles Rule.** Cost colors identify providers, the accent measures remaining allowance, and warning colors accompany forecast text.
+**The Separate Roles Rule.** Cost colors identify providers. Quota color communicates capacity state; the fill length always measures remaining allowance. Warning labels use secondary text.
 
 ## Typography
 
@@ -59,9 +59,9 @@ Panel labels and bar percentages use Qt's `sans-serif` family. Normal and `Font.
 | Quota title | `Style.space(16)` | DemiBold; window names |
 | Body | `Style.space(14)` | Normal; remaining allowance and legend labels |
 | Compact label | `Style.space(13)` | Periods, plans, resets, and exact costs; selected period is DemiBold |
-| Supporting text | `Style.space(11)`–`Style.space(12)` | Units, status, forecasts, and Refresh; warnings use DemiBold |
+| Supporting text | `Style.space(11)`–`Style.space(12)` | Units, status, forecasts, and Refresh; only Refresh uses DemiBold |
 
-Bar percentages are DemiBold at `Style.space(14)`, right-aligned in a width measured from `100%`. The ring total and legend amounts can shrink to fit. Plan names and quota titles elide; status, reset, and forecast text can wrap.
+Bar percentages are DemiBold at `Style.space(14)`, right-aligned in a width measured from `100%`. The ring total and legend amounts can shrink to fit. Plan names and quota titles elide; status and reset text can wrap. Forecast warnings stay on the title line, with the title yielding space to the warning.
 
 ## Layout
 
@@ -69,7 +69,7 @@ The popup is one column. `KeyboardPanel` requests content width `Style.space(400
 
 Major sections are separated by `Style.space(22)`. Cost content has `Style.space(14)` insets; provider groups have `Style.space(16)` insets and `Style.space(22)` between quota rows. These are component measurements, not a new global spacing scale.
 
-The cost group places the three-period selector above a ring and an aligned provider legend. Each provider heading sits outside its inset quota group. Inside a quota row, the order is title, meter, remaining percentage on the left with reset on the right, then forecast text. The footer pairs update status with Refresh.
+The cost group places the three-period selector above a ring and an aligned provider legend. Each provider heading sits outside its inset quota group. Inside a quota row, the order is title with any warning right-aligned alongside it, meter, then remaining percentage on the left with reset on the right. There is no forecast row beneath those figures. The footer pairs update status with Refresh.
 
 The bar shows two provider summaries horizontally, separated by a fine rule. On a vertical bar they stack and the separator disappears. Both providers remain visible in either orientation.
 
@@ -81,7 +81,7 @@ Positioning, focus, dismissal, and panel transitions belong to the native shell.
 
 ## Shapes
 
-The outer popup has a `Style.space(18)` corner radius. Cost and provider groups use `Style.space(14)`. Period controls, Refresh, and meter ends are fully rounded using half their height. Meters are thin (`Style.space(6)`) and show a continuous fill without a pace marker.
+The outer popup has a `Style.space(18)` corner radius. Cost and provider groups use `Style.space(14)`. Period controls, Refresh, and meter ends are fully rounded using half their height. Meters are thin (`Style.space(6)`). Caution and urgent forecasts add a `Style.space(2)` even-pace marker, extending `Style.space(2)` above and below the track. It uses 55% foreground mixed into the group and sits at the remaining fraction of the time window. Healthy, exhausted, stale and unavailable readings have no marker.
 
 The cost ring is drawn in a `Style.space(134)` square with a `Style.space(24)` stroke. Small gaps separate nonzero provider segments. Local SVG assets supply the monochrome provider marks and information icon through `TintedIcon`.
 
@@ -101,9 +101,11 @@ The ring total is rounded to whole dollars; the adjacent provider amounts show t
 
 ### Provider quota group
 
-A monochrome provider mark, heading, and subdued plan label introduce each group. Session, Weekly, and reported model-specific windows appear together. The accent meter represents allowance remaining, followed by a textual percentage and reset countdown.
+A monochrome provider mark, heading, and subdued plan label introduce each group. Session, Weekly, and reported model-specific windows appear together. The meter represents allowance remaining, followed by a textual percentage and reset countdown.
 
-Calm forecasts use secondary text. Low-buffer forecasts use amber and DemiBold; urgent or exhausted forecasts use urgency color, DemiBold, and a flame alongside text. Forecast tooltips explain the average-use basis. Missing or expired percentages use an em dash and an empty meter. Stale unexpired readings retain their numbers with reduced fill opacity (0.4), an explicit status, and no forecast.
+Healthy forecasts with at least 10% projected spare have no visible note or marker. Hovering the meter reveals the projection. A smaller buffer that rounds to at least 1% shows a yellow meter and a normal-weight secondary `~N% spare` note beside the title. A buffer that rounds to zero, or projected exhaustion before reset, shows a red meter and flame; a meaningful exhaustion estimate accompanies the flame. A displayed zero remaining shows `Limit reached`. Warning text stays secondary and normal weight. Forecast tooltips explain the average-use basis.
+
+Very early readings below 5% usage suppress extrapolated alarms. Without a usable projection, fresh readings use absolute rounded-usage bands: yellow at 80% used and red at 90%, without a pacing note or marker. Missing or expired percentages use an em dash and an empty meter. Stale unexpired readings retain their numbers with reduced fill opacity (0.4), an explicit status, and no forecast.
 
 ### Native panel controls
 
@@ -122,6 +124,6 @@ Refresh is a compact pill using the group color at rest and track color on hover
 ### Don't:
 
 - **Don't** hardcode the captured blue accent or a captured light/dark palette.
-- **Don't** use cost colors to tint provider quota groups or replace forecast text with color alone.
+- **Don't** use cost colors to tint provider quota groups or add permanent healthy forecast text.
 - **Don't** add provider tabs, Extra Usage, or Usage Trend sections to this widget.
 - **Don't** put every quota row in a separate card or add decorative animation.

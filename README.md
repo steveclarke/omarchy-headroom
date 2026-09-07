@@ -10,7 +10,8 @@ Claude Code and Codex weekly percentages, local cost estimates, reset times, and
 - Session, weekly, and reported model-specific quota windows in the panel.
 - Estimated local usage value in USD for Today, Yesterday, and 30 Days, with a provider cost split.
 - Reset countdowns beneath thin quota meters.
-- Projected capacity left at reset, an amber spare-capacity warning, or a flame with estimated time to exhaustion.
+- Quiet quota rows when capacity is healthy. A yellow meter and spare-capacity note appear when the projected buffer is below 10%; a red meter and flame warn of a limit, with an exhaustion estimate when available.
+- Hover a quota meter for the projected capacity at reset. Warning notes sit beside the quota title.
 - Last-known percentages with a warning when a refresh cannot be verified. Unreliable data never generates a forecast.
 
 Forecasts use average consumption since the quota window began. They are estimates of allowance consumption, not additional charges or a measurement of the last few minutes' activity.

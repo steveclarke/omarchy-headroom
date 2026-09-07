@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-09-07T16:14:09Z",
+  "generatedAt": "2026-09-07T16:37:49Z",
   "title": "Design System: Headroom",
   "extensions": {
     "colorMeta": {
@@ -25,9 +25,9 @@
         "track": "mix(group, foreground, 0.14)",
         "selectorBed": "mix(group, foreground, 0.055)",
         "dim": "legible(mix(foreground, surface, 0.22), mix(group, foreground, 0.055))",
-        "caution": "legible(surface.hslLightness > 0.5 ? \"#956015\" : \"#edb86b\", group)",
+        "caution": "surface.hslLightness > 0.5 ? \"#c49a16\" : \"#edc35b\"",
         "urgent": "legible(Color.urgent, group)",
-        "quotaFill": "Color.accent",
+        "quotaFill": "meterColor(Pace.severity(window, forecast, now, fresh))",
         "barForeground": "button.foreground",
         "barUrgent": "root.bar ? root.bar.urgent : Color.urgent"
       },
@@ -41,7 +41,7 @@
         "quotaTitle": { "size": "Style.space(16)", "weight": "Font.DemiBold" },
         "body": { "size": "Style.space(14)", "weight": "Font.Normal" },
         "compactLabel": { "size": "Style.space(13)", "weight": "Font.Normal" },
-        "supporting": { "sizes": ["Style.space(11)", "Style.space(12)"], "weight": "Font.Normal; Font.DemiBold for warnings and Refresh" },
+        "supporting": { "sizes": ["Style.space(11)", "Style.space(12)"], "weight": "Font.Normal; Font.DemiBold for Refresh" },
         "barPercentage": { "size": "Style.space(14)", "weight": "Font.DemiBold", "width": "Math.ceil(valueSize.width), measured from 100%" }
       },
       "geometry": {
@@ -84,8 +84,8 @@
         {
           "name": "Provider quota group",
           "source": "Panel.qml; Model.js; Pace.js",
-          "description": "Provider heading above a rounded inset group containing quota titles, thin shared-accent meters, remaining percentages, reset text and buffer or exhaustion forecasts.",
-          "states": ["calm forecast: dim", "caution forecast: caution and Font.DemiBold", "urgent or exhausted: urgent, Font.DemiBold and flame", "stale: status, fill opacity 0.4 and no forecast", "missing or expired: em dash and empty meter"]
+          "description": "Provider heading above a rounded inset group containing quota titles with conditional warnings, thin state-colored meters, remaining percentages and reset text. Healthy projections are available on hover.",
+          "states": ["calm forecast: theme-accent fill, no note or marker, hover projection", "caution forecast: yellow fill and pace marker, dim normal-weight spare note", "urgent: urgency fill and flame, pace marker, dim normal-weight ETA when available", "exhausted: urgency fill and flame, Limit reached, no marker", "fresh without projection: absolute usage bands at 80% and 90%, no note or marker", "stale: status, fill opacity 0.4 and no forecast", "missing or expired: em dash and empty meter"]
         },
         {
           "name": "Refresh and status footer",
@@ -104,11 +104,11 @@
     "keyCharacteristics": [
       "Rounded outer surface with quiet inset groups.",
       "Strong headings and amounts, subdued supporting text.",
-      "Provider color confined to the cost split; shared theme accent for allowance.",
+      "Provider color confined to the cost split; shared theme accent for healthy allowance, yellow and red for warnings.",
       "Explicit text for unavailable readings, resets, and forecast warnings."
     ],
     "rules": [
-      { "name": "The Separate Roles Rule", "body": "Cost colors identify providers, the accent measures remaining allowance, and warning colors accompany forecast text.", "section": "colors" }
+      { "name": "The Separate Roles Rule", "body": "Cost colors identify providers. Quota color communicates capacity state; the fill length always measures remaining allowance. Warning labels use secondary text.", "section": "colors" }
     ],
     "dos": [
       "Do keep theme colors and `Style.space()` expressions live.",
@@ -119,7 +119,7 @@
     ],
     "donts": [
       "Don't hardcode the captured blue accent or a captured light/dark palette.",
-      "Don't use cost colors to tint provider quota groups or replace forecast text with color alone.",
+      "Don't use cost colors to tint provider quota groups or add permanent healthy forecast text.",
       "Don't add provider tabs, Extra Usage, or Usage Trend sections to this widget.",
       "Don't put every quota row in a separate card or add decorative animation."
     ]

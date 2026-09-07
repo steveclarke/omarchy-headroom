@@ -12,16 +12,16 @@ Operate
 See weekly capacity at a glance; open once for costs and the runway behind it.
 
 ## OWN-WORLD
-A compact desktop usage instrument: monochrome provider marks, soft grouped surfaces, clear sans-serif labels, thin blue meters.
+A compact desktop usage instrument: monochrome provider marks, soft grouped surfaces, clear sans-serif labels, thin theme-accent meters with yellow or red warning states.
 
 ## STORY
-Weekly summaries in the bar. Cost period selector and provider split first. Claude and Codex limits below, each with remaining allowance, reset and pace estimate.
+Weekly summaries in the bar. Cost period selector and provider split first. Claude and Codex limits below, each with remaining allowance and reset. Pacing appears beside the title only when capacity needs attention; healthy projections stay on hover.
 
 ## FIRST VIEWPORT
 The Cost heading, Today/Yesterday/30 Days control, and cost ring introduce the panel. Both providers fit on a normal desktop. Switching periods updates the ring and exact amounts together.
 
 ## FORM
-Rounded popup and quiet inset groups. Large total, aligned currency legend, quota title above meter, remaining percentage below left and reset below right. Preserve native dismissal and theme behavior.
+Rounded popup and quiet inset groups. Large total, aligned currency legend, quota title and conditional warning above meter, remaining percentage below left and reset below right. Preserve native dismissal and theme behavior.
 
 ## FINISH
 Verify light/dark, missing and stale data, period selection, keyboard controls, synthetic previews, and live collection without publishing private usage.
