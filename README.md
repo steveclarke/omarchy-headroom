@@ -1,14 +1,15 @@
 # Headroom
 
-Claude Code and Codex quota percentages, reset times, and usage forecasts for the Omarchy bar.
+Claude Code and Codex weekly percentages, local cost estimates, reset times, and usage forecasts for the Omarchy bar.
 
-**Early proof of concept.** Both providers stay visible in the bar and in one compact panel. Headroom follows Omarchy's native styling and uses its installed usage collectors.
+**Early proof of concept.** Both providers stay visible in the bar and in one compact panel. Headroom uses Omarchy's installed quota collectors with a compact, rounded panel that follows the active theme.
 
 ## What it shows
 
-- Session and weekly percentages **remaining**, labeled S and W in the bar.
+- Weekly percentages **remaining** for both providers in the bar.
 - Session, weekly, and reported model-specific quota windows in the panel.
-- Reset countdowns and a marker for the allowance expected to remain at an even pace.
+- Estimated local usage value in USD for Today, Yesterday, and 30 Days, with a provider cost split.
+- Reset countdowns beneath thin quota meters.
 - Projected capacity left at reset, an amber spare-capacity warning, or a flame with estimated time to exhaustion.
 - Last-known percentages with a warning when a refresh cannot be verified. Unreliable data never generates a forecast.
 
@@ -28,14 +29,17 @@ Synthetic values; the interface follows the active Omarchy theme.
 
 - Omarchy with the Quattro shell, native plugin services, and `omarchy-agent-usage-claude` / `omarchy-agent-usage-codex` collectors.
 - Python 3 and signed-in Claude Code / Codex CLIs.
+- Bun and Node.js for installing/running the pinned ccusage cost reader; Qt 6 graphical effects (normally provided by Omarchy).
 
 ## Install
 
 ```sh
 omarchy plugin add https://github.com/steveclarke/omarchy-headroom.git --enable
+python3 ~/.config/omarchy/plugins/io.github.steveclarke.headroom/bin/setup-costs
+omarchy-shell headroom refresh
 ```
 
-Click the bar summary to open the panel. Right-click or middle-click refreshes; R or Enter refreshes inside the panel, and Escape closes it. Usage refreshes every five minutes. Repeated refresh requests within twenty seconds are coalesced.
+Click the bar summary to open the panel. Right-click or middle-click refreshes; R or Enter refreshes inside the panel, and Escape closes it. Left/right arrows or 1/2/3 select the cost period. Usage refreshes every five minutes. Repeated refresh requests within twenty seconds are coalesced.
 
 Once satisfied with Headroom, disable the built-in Agents display to avoid two independent refresh loops:
 
@@ -50,12 +54,18 @@ omarchy plugin remove io.github.steveclarke.headroom
 omarchy plugin enable omarchy.agents
 ```
 
-Update with `omarchy plugin update io.github.steveclarke.headroom`.
+Update with `omarchy plugin update io.github.steveclarke.headroom`, then rerun `bin/setup-costs` from the installed plugin directory to apply any pinned cost-reader update.
 If an update still shows the old behavior, run `omarchy restart shell` to clear the shell's compiled QML cache.
+
+## Cost estimates
+
+[ccusage](https://github.com/ccusage/ccusage) 20.0.20 reads local Claude Code and Codex history. Headroom requests daily reports with bundled offline pricing, preserving recorded costs when available. It retains only daily USD totals, not project names or model/token details. Cost reading runs separately from quota collection. No usage history is uploaded.
+
+These are estimated API-equivalent usage values, **not subscription charges**. Coverage is this machine's available local history; it does not include sessions on other computers. Today and Yesterday use the local calendar; 30 Days includes today and the previous 29 days. Missing or incomplete pricing shows `—`, never an invented zero or a misleading combined total. Model mappings, deduplication and pricing accuracy depend on the pinned reader; prices can change.
 
 ## Current limitations
 
-- Headroom shows only windows exported by Omarchy's collectors. A provider can legitimately have a weekly allowance without a shared session allowance; S then reads `—`. The current Codex collector does not export its separate model-specific pools.
+- Headroom shows only windows exported by Omarchy's collectors. A provider can legitimately have a weekly allowance without a shared session allowance; Only reported windows appear in the panel. The current Codex collector does not export its separate model-specific pools.
 - Forecasts require a known window duration and a verified recent observation. Unknown windows still show their usage and reset time. A new or unused window has no meaningful burn rate yet.
 - Claude can silently fall back to cached values. Headroom checks the native usage-cache timestamp to detect this. A simultaneous check by another widget can temporarily leave Claude marked unverified; retry after twenty seconds. The native CLI owns login renewal.
 - There is one active account per provider. Headroom does not persist its own snapshots or support account switching/multi-account aggregation.
@@ -64,7 +74,7 @@ If an update still shows the old behavior, run `omarchy restart shell` to clear 
 
 ## Development
 
-The shell creates one `Service.qml` for all monitors. It runs `bin/headroom-collect`; `Model.js` and `Pace.js` normalize display state and calculate forecasts. `BarWidget.qml` hosts the native `Panel.qml` lifecycle.
+The shell creates one `Service.qml` for all monitors. It runs `bin/headroom-collect`; `Model.js` and `Pace.js` normalize display state and calculate forecasts. `Costs.js` selects local calendar periods from the separate cost worker. `BarWidget.qml` hosts the native `Panel.qml` lifecycle.
 
 Interface conventions are recorded in [DESIGN.md](DESIGN.md).
 

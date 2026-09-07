@@ -49,11 +49,10 @@ BarWidget {
     labelVisible: false
     fixedWidth: root.vertical ? -1 : chips.implicitWidth + Style.space(16)
     fixedHeight: root.vertical ? chips.implicitHeight + Style.space(12) : -1
-    tooltipText: "Headroom · percentages remaining\nS: Session · W: Weekly\nClick for limits and forecasts · right-click to refresh"
+    tooltipText: "Headroom · weekly percentages remaining\nClick for costs, limits and forecasts · right-click to refresh"
     Accessible.role: Accessible.Button
     Accessible.name: "Headroom. " + root.providers.map(function(p) {
-      return p.name + ": session " + Model.percentage(Model.find(p, "session"), root.now)
-        + ", weekly " + Model.percentage(Model.find(p, "weekly"), root.now) + " remaining"
+      return p.name + ": weekly " + Model.percentage(Model.find(p, "weekly"), root.now) + " remaining"
     }).join(". ")
     Accessible.onPressAction: root.toggle()
     onPressed: function(b) {
@@ -80,47 +79,24 @@ BarWidget {
             height: Style.space(12)
             color: Qt.rgba(button.foreground.r, button.foreground.g, button.foreground.b, 0.22)
           }
-          Image {
+          ProviderIcon {
             anchors.verticalCenter: parent.verticalCenter
-            source: Qt.resolvedUrl("assets/" + chip.modelData.id + (chip.modelData.id === "codex" && button.foreground.hslLightness < 0.5 ? "-light" : "") + ".svg")
-            width: Style.font.icon
+            provider: chip.modelData.id
+            ink: button.foreground
+            width: Style.space(19)
             height: width
-            sourceSize.width: width * 2
-            sourceSize.height: height * 2
           }
-          Grid {
-            columns: root.vertical ? 1 : 2
-            spacing: Style.space(7)
-            Repeater {
-              model: ["session", "weekly"]
-              Row {
-                id: reading
-                required property string modelData
-                spacing: Style.space(3)
-                Text {
-                  text: reading.modelData === "session" ? "S" : "W"
-                  anchors.baseline: value.baseline
-                  color: button.foreground
-                  font.family: button.fontFamily
-                  font.pixelSize: Style.font.caption
-                }
-                Text {
-                  id: value
-                  width: Math.ceil(valueSize.width)
-                  text: Model.percentage(Model.find(chip.modelData, reading.modelData), root.now)
-                  horizontalAlignment: Text.AlignRight
-                  color: button.foreground
-                  font.family: button.fontFamily
-                  font.pixelSize: Style.font.bodySmall
-                  font.weight: Font.DemiBold
-                }
-                TextMetrics {
-                  id: valueSize
-                  text: "100%"
-                  font: value.font
-                }
-              }
-            }
+          Text {
+            id: value
+            anchors.verticalCenter: parent.verticalCenter
+            width: Math.ceil(valueSize.width)
+            text: Model.percentage(Model.find(chip.modelData, "weekly"), root.now)
+            horizontalAlignment: Text.AlignRight
+            color: button.foreground
+            font.family: "sans-serif"
+            font.pixelSize: Style.space(14)
+            font.weight: Font.DemiBold
+            TextMetrics { id: valueSize; text: "100%"; font: value.font }
           }
           Text {
             text: root.warning(chip.modelData)

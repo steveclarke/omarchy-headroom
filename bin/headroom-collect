@@ -5,6 +5,7 @@ No provider API calls or credentials live here. Claude's public record timestamp
 describes execution, so correlate its separate successful-probe cache before
 allowing a forecast. Unknown cache contracts fail closed.
 """
+import argparse
 import concurrent.futures
 import datetime as dt
 import json
@@ -54,33 +55,39 @@ def watch_parent(parent):
     os._exit(143)
 
 
-def run_collector(command, timeout=TIMEOUT):
+def run_collector(command, timeout=TIMEOUT, diagnostics=False):
     """Bound runtime and output; terminate the collector's app-server subtree."""
     with ACTIVE_LOCK:
         if STOPPING.is_set():
             raise CollectionError("Usage check cancelled")
         try:
-            proc = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
-                                    start_new_session=True)
+            env = dict(os.environ, LOG_LEVEL="4", NO_COLOR="1") if diagnostics else None
+            proc = subprocess.Popen(command, stdout=subprocess.PIPE,
+                                    stderr=subprocess.PIPE if diagnostics else subprocess.DEVNULL,
+                                    start_new_session=True, env=env)
         except OSError as exc:
             raise CollectionError("Collector unavailable · update Omarchy") from exc
         ACTIVE.add(proc.pid)
     output = bytearray()
+    errors = bytearray()
     deadline = time.monotonic() + timeout
     try:
         with selectors.DefaultSelector() as selector:
             selector.register(proc.stdout, selectors.EVENT_READ)
-            while True:
+            if diagnostics:
+                selector.register(proc.stderr, selectors.EVENT_READ)
+            while selector.get_map():
                 if time.monotonic() >= deadline:
                     raise CollectionError("Usage check timed out · try refreshing")
-                if not selector.select(min(0.2, max(0, deadline - time.monotonic()))):
-                    continue
-                chunk = os.read(proc.stdout.fileno(), 65536)
-                if not chunk:
-                    break
-                output.extend(chunk)
-                if len(output) > MAX_OUTPUT:
-                    raise CollectionError("Collector output too large · update Omarchy")
+                for key, _ in selector.select(min(0.2, max(0, deadline - time.monotonic()))):
+                    chunk = os.read(key.fd, 65536)
+                    if not chunk:
+                        selector.unregister(key.fileobj)
+                        continue
+                    buffer = output if key.fileobj is proc.stdout else errors
+                    buffer.extend(chunk)
+                    if len(buffer) > MAX_OUTPUT:
+                        raise CollectionError("Collector output too large · update Omarchy")
         try:
             code = proc.wait(timeout=max(0.01, deadline - time.monotonic()))
         except subprocess.TimeoutExpired as exc:
@@ -93,6 +100,8 @@ def run_collector(command, timeout=TIMEOUT):
             raise CollectionError("Could not read usage · update Omarchy") from exc
         if not isinstance(value, dict):
             raise CollectionError("Could not read usage · update Omarchy")
+        if diagnostics:
+            value["_hasWarnings"] = bool(errors.strip())
         return value
     finally:
         try:
@@ -101,6 +110,8 @@ def run_collector(command, timeout=TIMEOUT):
             pass
         proc.wait()
         proc.stdout.close()
+        if diagnostics:
+            proc.stderr.close()
         with ACTIVE_LOCK:
             ACTIVE.discard(proc.pid)
 
@@ -221,17 +232,67 @@ def collect(provider):
                 "plan": "", "state": "unavailable", "message": str(exc), "observedAt": 0, "windows": []}
 
 
+def normalize_costs(record, provider, today):
+    """Keep only daily money totals; never forward model or project details."""
+    rows = record.get("daily")
+    if not isinstance(rows, list) or len(rows) > 366:
+        raise CollectionError("Cost reader format changed · update Headroom")
+    start = today - dt.timedelta(days=29)
+    daily = {}
+    partial = bool(record.get("_hasWarnings"))
+    for row in rows:
+        if not isinstance(row, dict):
+            raise CollectionError("Cost reader returned invalid data")
+        try:
+            date = dt.date.fromisoformat(row["date"])
+        except (ValueError, TypeError, KeyError) as exc:
+            raise CollectionError("Cost reader returned invalid dates") from exc
+        value = row.get("totalCost" if provider == "claude" else "costUSD")
+        if not numeric(value) or value < 0 or date.isoformat() in daily:
+            raise CollectionError("Cost reader returned invalid amounts")
+        if not start <= date <= today:
+            continue
+        if provider == "claude":
+            partial = partial or any(b.get("missingPricing", False) for b in row.get("modelBreakdowns", []) if isinstance(b, dict))
+        daily[date.isoformat()] = value
+    return {"id": provider, "state": "partial" if partial else "fresh", "daily": daily,
+            "message": "Incomplete pricing · update the cost reader" if partial else ""}
+
+
+def collect_cost(provider):
+    runtime = Path(__file__).resolve().parents[1] / "runtime"
+    reader = runtime / "node_modules/.bin/ccusage"
+    if not reader.exists():
+        return {"id": provider, "state": "unavailable", "daily": {},
+                "message": "Cost reader missing · run bin/setup-costs"}
+    try:
+        today = dt.date.today()
+        record = run_collector([str(reader), provider, "daily", "--since",
+                                (today - dt.timedelta(days=29)).isoformat(), "--until", today.isoformat(),
+                                "--json", "--offline", "--mode", "auto", "--config", str(runtime / "config.json")],
+                               diagnostics=True)
+        return normalize_costs(record, provider, today)
+    except CollectionError:
+        return {"id": provider, "state": "unavailable", "daily": {},
+                "message": "Local costs unavailable · check the cost reader and refresh"}
+
+
 def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--parent", type=int)
+    parser.add_argument("--costs", action="store_true")
+    args = parser.parse_args()
     signal.signal(signal.SIGTERM, terminate)
     signal.signal(signal.SIGINT, terminate)
-    if len(sys.argv) == 3 and sys.argv[1] == "--parent":
-        parent = int(sys.argv[2])
+    if args.parent:
+        parent = args.parent
         if os.getppid() != parent:
             return
         threading.Thread(target=watch_parent, args=(parent,), daemon=True).start()
+    observed = time.time() * 1000
     with concurrent.futures.ThreadPoolExecutor(max_workers=2) as pool:
-        providers = list(pool.map(collect, ("claude", "codex")))
-    print(json.dumps({"schema": 1, "providers": providers}, allow_nan=False))
+        providers = list(pool.map(collect_cost if args.costs else collect, ("claude", "codex")))
+    print(json.dumps({"schema": 1, "providers": providers, "observedAt": observed}, allow_nan=False))
 
 
 if __name__ == "__main__":
