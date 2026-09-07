@@ -12,16 +12,20 @@ function evaluate(window, observedAt, now, fresh) {
   var u = window.used
   var duration = window.durationMs
   var reset = window.resetAt
-  if (!finite(u) || u < 0 || !finite(reset) || reset <= now) return null
-  if (u >= 1) return {status: "exhausted", projected: null, spare: 0, exhaustionAt: null, marker: null}
-  if (!finite(duration) || duration <= 0 || u === 0) return null
+  if (!finite(u) || u < 0 || (finite(reset) && reset > 0 && reset <= now)) return null
+  // Match the whole-percent headline: a visible zero is already spent.
+  if (Math.round(clamp(1 - u, 0, 1) * 100) === 0)
+    return {status: "exhausted", projected: null, spare: 0, exhaustionAt: null, marker: null}
+  if (!finite(reset) || reset <= now || !finite(duration) || duration <= 0 || u === 0) return null
   var elapsed = observedAt - (reset - duration)
   if (elapsed < Math.max(60000, duration * 0.01) || elapsed >= duration) return null
   var rate = u / elapsed
   var projected = rate * duration
   var spare = 1 - projected
+  // Whole-percent usage is too coarse to extrapolate an alarm near empty.
+  if (spare < 0.1 - 1e-10 && u < 0.05) return null
   return {
-    status: spare >= 0.1 - 1e-10 ? "calm" : spare > 1e-10 ? "caution" : "urgent",
+    status: spare >= 0.1 - 1e-10 ? "calm" : Math.round(spare * 100) >= 1 ? "caution" : "urgent",
     projected: projected,
     spare: spare,
     exhaustionAt: projected > 1 + 1e-10 ? observedAt + (1 - u) / rate : null,
@@ -40,21 +44,35 @@ function duration(ms) {
 }
 
 function summary(result, now) {
-  if (!result) return ""
+  if (!result || result.status === "calm") return ""
   if (result.status === "exhausted") return "Limit reached"
   if (result.exhaustionAt !== null)
     return result.exhaustionAt > now ? "Limit in " + duration(result.exhaustionAt - now) : "Limit expected now"
-  if (result.status === "urgent") return "No buffer at reset"
-  var pct = result.spare * 100
-  var value = pct < 1 ? "<1%" : "~" + Math.round(pct) + "%"
-  return value + (result.status === "caution" ? " spare" : " left at reset")
+  // With no meaningful ETA, the flame carries the warning alone.
+  if (result.status === "urgent") return ""
+  return "~" + Math.round(result.spare * 100) + "% spare"
 }
 
 function tooltip(result) {
-  if (!result) return "A forecast needs fresh usage and a known reset window."
-  if (result.status === "exhausted") return "The reported allowance has been used."
-  var projection = result.projected > 1
-    ? "~" + Math.round((result.projected - 1) * 100) + "% over the allowance at reset."
-    : "~" + Math.round(result.projected * 100) + "% used at reset."
+  if (!result) return ""
+  if (result.status === "exhausted") return "Limit reached"
+  var projection = result.status === "calm"
+    ? "~" + Math.round(result.spare * 100) + "% left at reset."
+    : result.projected > 1
+      ? "~" + Math.max(1, Math.round((result.projected - 1) * 100)) + "% over the allowance at reset."
+      : "~" + Math.round(result.projected * 100) + "% used at reset."
   return projection + " Based on average use since this window began, not recent activity or additional charges."
+}
+
+function severity(window, result, now, fresh) {
+  if (!window || !finite(window.used) || window.used < 0 || (window.resetAt > 0 && now >= window.resetAt)) return "none"
+  if (!fresh) return "normal"
+  if (result) return result.status === "calm" ? "normal" : result.status === "caution" ? "warning" : "critical"
+  // A current reading with no usable reset window still has an absolute level.
+  var used = Math.round(clamp(window.used, 0, 1) * 100)
+  return used >= 90 ? "critical" : used >= 80 ? "warning" : "normal"
+}
+
+function marker(result) {
+  return result && (result.status === "caution" || result.status === "urgent") ? result.marker : null
 }

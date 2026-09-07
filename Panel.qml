@@ -24,7 +24,7 @@ Panel {
   readonly property color track: mix(group, foreground, 0.14)
   readonly property color dim: legible(mix(foreground, surface, 0.22), mix(group, foreground, 0.055))
   readonly property color urgent: legible(Color.urgent, group)
-  readonly property color caution: legible(surface.hslLightness > 0.5 ? "#956015" : "#edb86b", group)
+  readonly property color caution: surface.hslLightness > 0.5 ? "#c49a16" : "#edc35b"
   readonly property color claudeColor: "#d77b5f"
   readonly property color codexColor: "#279b80"
   readonly property var costAmounts: [Costs.amount(costs, 0, period, now), Costs.amount(costs, 1, period, now)]
@@ -50,9 +50,8 @@ Panel {
   function money(value) { return value === null ? "—" : "$" + Number(value).toLocaleString(Qt.locale("en_US"), 'f', 2) }
   function refresh() { if (service) service.refresh() }
   function selectPeriod(index) { if (service) service.costPeriod = Math.max(0, Math.min(2, index)) }
-  function severity(forecast) {
-    if (!forecast || forecast.status === "calm") return dim
-    return forecast.status === "caution" ? caution : urgent
+  function meterColor(severity) {
+    return severity === "critical" ? urgent : severity === "warning" ? caution : Color.accent
   }
   component Label: Text {
     color: root.foreground
@@ -321,13 +320,47 @@ Panel {
                       spacing: Style.space(5)
                       readonly property var forecast: Pace.evaluate(modelData, providerGroup.modelData.observedAt, root.now, Model.fresh(providerGroup.modelData, root.now))
                       readonly property string remaining: Model.percentage(modelData, root.now)
+                      readonly property bool flame: forecast !== null && (forecast.status === "urgent" || forecast.status === "exhausted")
+                      readonly property var paceMarker: Pace.marker(forecast)
                       Accessible.role: Accessible.ProgressBar
-                      Accessible.name: modelData.title + ": " + remaining + " remaining. " + Pace.summary(forecast, root.now)
-                      Label {
+                      Accessible.name: modelData.title + ": " + remaining + " remaining. " + (flame && Pace.summary(forecast, root.now) === "" ? "Will reach limit" : Pace.summary(forecast, root.now))
+                      Item {
                         width: parent.width
-                        text: metric.modelData.title === "Fable Weekly" ? "Fable" : metric.modelData.title
-                        elide: Text.ElideRight
-                        font.pixelSize: Style.space(16); font.weight: Font.DemiBold
+                        height: Math.max(quotaTitle.height, warning.implicitHeight)
+                        Label {
+                          id: quotaTitle
+                          width: parent.width - (warning.visible ? warning.width + Style.space(10) : 0)
+                          text: metric.modelData.title === "Fable Weekly" ? "Fable" : metric.modelData.title
+                          elide: Text.ElideRight
+                          font.pixelSize: Style.space(16); font.weight: Font.DemiBold
+                        }
+                        Item {
+                          id: warning
+                          anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter
+                          implicitWidth: warningContents.implicitWidth
+                          implicitHeight: warningContents.implicitHeight
+                          visible: metric.flame || warningText.text !== ""
+                          Row {
+                            id: warningContents
+                            spacing: Style.space(3)
+                            Label {
+                              visible: metric.flame
+                              text: "󰈸"; color: root.urgent
+                              font.pixelSize: Style.space(11)
+                            }
+                            Label {
+                              id: warningText
+                              visible: text !== ""
+                              text: Pace.summary(metric.forecast, root.now)
+                              color: root.dim; font.pixelSize: Style.space(11)
+                            }
+                          }
+                          MouseArea {
+                            anchors.fill: parent; hoverEnabled: true
+                            onEntered: if (root.bar) root.bar.showTooltip(this, Pace.tooltip(metric.forecast))
+                            onExited: if (root.bar) root.bar.hideTooltip(this)
+                          }
+                        }
                       }
                       Rectangle {
                         width: parent.width; height: Style.space(6); radius: height / 2
@@ -335,8 +368,21 @@ Panel {
                         Rectangle {
                           width: metric.remaining === "—" ? 0 : parent.width * Math.max(0, Math.min(1, 1 - metric.modelData.used))
                           height: parent.height; radius: parent.radius
-                          color: Color.accent
+                          color: root.meterColor(Pace.severity(metric.modelData, metric.forecast, root.now, Model.fresh(providerGroup.modelData, root.now)))
                           opacity: Model.fresh(providerGroup.modelData, root.now) ? 1 : 0.4
+                        }
+                        Rectangle {
+                          visible: metric.paceMarker !== null
+                          x: Math.max(0, Math.min(parent.width - width, parent.width * (1 - (metric.paceMarker || 0)) - width / 2))
+                          anchors.verticalCenter: parent.verticalCenter
+                          width: Style.space(2); height: parent.height + Style.space(4); radius: Style.space(1)
+                          color: root.mix(root.foreground, root.group, 0.45)
+                        }
+                        MouseArea {
+                          anchors.fill: parent; anchors.margins: -Style.space(3)
+                          hoverEnabled: true
+                          onEntered: if (root.bar && metric.forecast) root.bar.showTooltip(this, Pace.tooltip(metric.forecast))
+                          onExited: if (root.bar) root.bar.hideTooltip(this)
                         }
                       }
                       Item {
@@ -354,20 +400,6 @@ Panel {
                           text: metric.modelData.resetAt > root.now ? "Resets in " + Pace.duration(metric.modelData.resetAt - root.now) : metric.modelData.resetAt > 0 ? "Awaiting reset update" : "Reset not reported"
                           wrapMode: Text.WordWrap
                           color: root.dim; font.pixelSize: Style.space(13)
-                        }
-                      }
-                      Label {
-                        width: parent.width
-                        visible: text !== ""
-                        text: (metric.forecast && (metric.forecast.status === "urgent" || metric.forecast.status === "exhausted") ? "󰈸 " : "") + Pace.summary(metric.forecast, root.now)
-                        color: root.severity(metric.forecast)
-                        font.pixelSize: Style.space(11)
-                        font.weight: metric.forecast && metric.forecast.status !== "calm" ? Font.DemiBold : Font.Normal
-                        wrapMode: Text.WordWrap
-                        MouseArea {
-                          anchors.fill: parent; hoverEnabled: true
-                          onEntered: if (root.bar) root.bar.showTooltip(this, Pace.tooltip(metric.forecast))
-                          onExited: if (root.bar) root.bar.hideTooltip(this)
                         }
                       }
                     }

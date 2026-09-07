@@ -41,7 +41,51 @@ test('boundaries distinguish caution, no buffer and exhausted', () => {
   assert.equal(exact.status, 'urgent');
   assert.equal(exact.exhaustionAt, null);
   assert.equal(pace.evaluate(window(1), now, now, true).status, 'exhausted');
-  assert.match(pace.summary(pace.evaluate(window(.199), now, now, true), now), /<1% spare/);
+  assert.equal(pace.summary(pace.evaluate(window(.199), now, now, true), now), '~1% spare');
+});
+test('healthy pacing is blue and quiet, with its buffer available only on hover', () => {
+  const w = window(.2, 2 * hour), result = pace.evaluate(w, now, now, true);
+  assert.equal(pace.summary(result, now), '');
+  assert.equal(pace.marker(result), null);
+  assert.equal(pace.severity(w, result, now, true), 'normal');
+  assert.match(pace.tooltip(result), /^~50% left at reset/);
+});
+test('low buffer gets a yellow meter, spare note and even-pace tick', () => {
+  const w = window(.485, 2.5 * hour), result = pace.evaluate(w, now, now, true);
+  assert.equal(pace.summary(result, now), '~3% spare');
+  assert.equal(pace.marker(result), .5);
+  assert.equal(pace.severity(w, result, now, true), 'warning');
+  assert.match(pace.tooltip(result), /^~97% used at reset/);
+});
+test('rounding to zero spare is a red flame without an invented ETA or zero-spare note', () => {
+  const w = window(.1995), result = pace.evaluate(w, now, now, true);
+  assert.equal(result.status, 'urgent');
+  assert.equal(result.exhaustionAt, null);
+  assert.equal(pace.summary(result, now), '');
+  assert.equal(pace.severity(w, result, now, true), 'critical');
+  assert.equal(pace.marker(result), .2);
+});
+test('near-empty coarse readings cannot create a premature warning', () => {
+  for (const used of [.01, .04]) {
+    const w = window(used, 5 * hour * .01);
+    assert.equal(pace.evaluate(w, now, now, true), null);
+    assert.equal(pace.severity(w, null, now, true), 'normal');
+  }
+});
+test('a displayed zero is spent; unknown durations use level colors without forecasts', () => {
+  const spent = {...window(.996), resetAt: 0};
+  const result = pace.evaluate(spent, now, now, true);
+  assert.equal(result.status, 'exhausted');
+  assert.equal(pace.summary(result, now), 'Limit reached');
+  assert.equal(pace.marker(result), null);
+  for (const [used, expected] of [[.79, 'normal'], [.8, 'warning'], [.9, 'critical']]) {
+    const w = {...window(used), durationMs: 0};
+    assert.equal(pace.evaluate(w, now, now, true), null);
+    assert.equal(pace.summary(null, now), '');
+    assert.equal(pace.severity(w, null, now, true), expected);
+  }
+  assert.equal(pace.severity(window(.9), null, now, false), 'normal');
+  assert.equal(pace.severity({...window(.9), resetAt: now}, null, now, true), 'none');
 });
 test('failed refresh keeps values but removes freshness', () => {
   const old = {state:'fresh', windows:[window(.4)], observedAt:now, plan:'Pro'};
