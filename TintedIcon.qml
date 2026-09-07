@@ -3,12 +3,12 @@ import Qt5Compat.GraphicalEffects
 
 Item {
   id: root
-  required property string provider
+  required property url iconSource
   required property color ink
   Image {
     id: mark
     anchors.fill: parent
-    source: Qt.resolvedUrl("assets/" + (root.provider === "codex" ? "openai" : root.provider) + ".svg")
+    source: root.iconSource
     sourceSize: Qt.size(width * 2, height * 2)
     visible: false
   }

@@ -80,9 +80,9 @@ BarWidget {
             height: Style.space(12)
             color: Qt.rgba(button.foreground.r, button.foreground.g, button.foreground.b, 0.22)
           }
-          ProviderIcon {
+          TintedIcon {
             anchors.verticalCenter: parent.verticalCenter
-            provider: chip.modelData.id
+            iconSource: Qt.resolvedUrl("assets/" + (chip.modelData.id === "codex" ? "openai" : "claude") + ".svg")
             ink: button.foreground
             width: Style.space(19)
             height: width

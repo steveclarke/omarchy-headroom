@@ -22,9 +22,9 @@ Panel {
   readonly property color foreground: Color.popups.text
   readonly property color group: mix(surface, foreground, 0.035)
   readonly property color track: mix(group, foreground, 0.14)
-  readonly property color dim: mix(foreground, surface, 0.22)
-  readonly property color urgent: Color.urgent
-  readonly property color caution: surface.hslLightness > 0.5 ? "#956015" : "#edb86b"
+  readonly property color dim: legible(mix(foreground, surface, 0.22), mix(group, foreground, 0.055))
+  readonly property color urgent: legible(Color.urgent, group)
+  readonly property color caution: legible(surface.hslLightness > 0.5 ? "#956015" : "#edb86b", group)
   readonly property color claudeColor: "#d77b5f"
   readonly property color codexColor: "#279b80"
   readonly property var costAmounts: [Costs.amount(costs, 0, period, now), Costs.amount(costs, 1, period, now)]
@@ -33,6 +33,19 @@ Panel {
   function mix(a, b, amount) {
     var first = Qt.color(a), second = Qt.color(b)
     return Qt.rgba(first.r + (second.r - first.r) * amount, first.g + (second.g - first.g) * amount, first.b + (second.b - first.b) * amount, 1)
+  }
+  function luminance(c) {
+    var color = Qt.color(c)
+    function linear(v) { return v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4) }
+    return 0.2126 * linear(color.r) + 0.7152 * linear(color.g) + 0.0722 * linear(color.b)
+  }
+  function legible(ink, background) {
+    var base = luminance(background)
+    for (var step = 0; step <= 10; step++) {
+      var candidate = mix(ink, foreground, step / 10), light = luminance(candidate)
+      if ((Math.max(light, base) + 0.05) / (Math.min(light, base) + 0.05) >= 4.65) return candidate
+    }
+    return foreground
   }
   function money(value) { return value === null ? "—" : "$" + Number(value).toLocaleString(Qt.locale("en_US"), 'f', 2) }
   function refresh() { if (service) service.refresh() }
@@ -94,9 +107,12 @@ Panel {
             Row {
               spacing: Style.space(8)
               Label { text: "Cost"; font.pixelSize: Style.space(18); font.weight: Font.DemiBold }
-              Label {
+              TintedIcon {
                 anchors.verticalCenter: parent.verticalCenter
-                text: "ⓘ"; color: root.dim; font.pixelSize: Style.space(14)
+                width: Style.space(14); height: width
+                iconSource: Qt.resolvedUrl("assets/info.svg")
+                ink: root.dim
+                Accessible.role: Accessible.StaticText
                 Accessible.name: "Costs are estimated API-equivalent usage value in USD from this machine's local history, not subscription charges."
                 MouseArea {
                   anchors.fill: parent; hoverEnabled: true
@@ -260,9 +276,9 @@ Panel {
               Row {
                 width: parent.width
                 spacing: Style.space(7)
-                ProviderIcon {
+                TintedIcon {
                   id: providerIcon
-                  provider: providerGroup.modelData.id; ink: root.dim
+                  iconSource: Qt.resolvedUrl("assets/" + (providerGroup.modelData.id === "codex" ? "openai" : "claude") + ".svg"); ink: root.dim
                   width: Style.space(21); height: width
                   anchors.verticalCenter: parent.verticalCenter
                 }
