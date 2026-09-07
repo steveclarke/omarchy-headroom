@@ -219,7 +219,7 @@ Panel {
                       }
                     }
                     Accessible.role: Accessible.StaticText
-                    Accessible.name: "Total estimated usage value: " + root.money(root.costTotal) + " USD"
+                    Accessible.name: "Total estimated usage value: " + root.money(root.costTotal) + " USD. " + root.costMessage
                   }
                   Column {
                     x: ringArea.width + Style.space(18)

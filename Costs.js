@@ -12,7 +12,7 @@ function dayKey(now, offset) {
 
 function amount(doc, index, period, now) {
   var p = doc && doc.providers[index]
-  if (!p || p.state !== "fresh" || typeof doc.observedAt !== "number" || !isFinite(doc.observedAt)
+  if (!p || (p.state !== "fresh" && p.state !== "partial") || typeof doc.observedAt !== "number" || !isFinite(doc.observedAt)
       || doc.observedAt <= 0 || doc.observedAt > now + 5000 || now - doc.observedAt > 600000 || dayKey(doc.observedAt, 0) !== dayKey(now, 0)) return null
   if (period < 2) return p.daily[dayKey(now, period === 0 ? 0 : -1)] || 0
   var sum = 0
@@ -29,9 +29,10 @@ function message(doc, now) {
   if (!doc) return "Reading local usage…"
   for (var i = 0; i < doc.providers.length; i++) {
     var p = doc.providers[i]
-    if (p.state !== "fresh") return p.message || "Costs unavailable · refresh to retry"
+    if (p.state !== "fresh" && p.state !== "partial") return p.message || "Costs unavailable · refresh to retry"
   }
   if (amount(doc, 0, 0, now) === null) return "Costs outdated · refresh to update"
+  if (doc.providers.some(function(p) { return p.state === "partial" })) return "Partial estimate · some usage may be missing"
   return "Estimated local usage · USD"
 }
 

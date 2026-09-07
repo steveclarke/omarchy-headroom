@@ -16,9 +16,9 @@ test('calendar periods include today plus 29 previous days across a year boundar
   assert.equal(costs.dayKey(now, -1), '2029-12-31');
 });
 
-test('a missing or unpriced provider cannot become a zero or a complete total', () => {
+test('an unavailable provider remains unavailable, without inventing a combined total', () => {
   const doc = costs.demo(now, 'normal');
-  doc.providers[1].state = 'partial';
+  doc.providers[1].state = 'unavailable';
   assert.equal(costs.total(doc, 0, now), null);
   assert.equal(costs.amount(doc, 1, 0, now), null);
   assert.equal(costs.amount(doc, 0, 0, now), 84.2);
@@ -53,3 +53,34 @@ test('future observations fail closed after a clock rollback', () => {
   const doc = costs.demo(now + 7200000, 'normal')
   assert.equal(costs.amount(doc, 0, 0, now), null)
 })
+
+
+test('partial reports keep available amounts visible for all three periods', () => {
+  const doc = costs.demo(now, 'normal');
+  const expected = [0, 1, 2].map(period => ({
+    a: costs.amount(doc, 0, period, now),
+    b: costs.amount(doc, 1, period, now),
+    total: costs.total(doc, period, now)
+  }));
+  for (const states of [['fresh', 'partial'], ['partial', 'partial']]) {
+    doc.providers.forEach((p, i) => { p.state = states[i]; });
+    for (let period = 0; period < 3; period++) {
+      assert.equal(costs.amount(doc, 0, period, now), expected[period].a);
+      assert.equal(costs.amount(doc, 1, period, now), expected[period].b);
+      assert.equal(costs.total(doc, period, now), expected[period].total);
+    }
+    assert.equal(costs.message(doc, now), 'Partial estimate · some usage may be missing');
+  }
+});
+
+test('partial reports still expire and cannot survive a clock rollback', () => {
+  const doc = costs.demo(now, 'normal');
+  doc.providers[0].state = 'partial';
+  for (const clock of [now + 600001, now - 6000, new Date(2030, 0, 2).getTime()]) {
+    assert.equal(costs.total(doc, 0, clock), null);
+    assert.equal(costs.message(doc, clock), 'Costs outdated · refresh to update');
+  }
+  doc.providers[1].state = 'unavailable';
+  doc.providers[1].message = 'Local costs unavailable';
+  assert.equal(costs.message(doc, now), 'Local costs unavailable');
+});
