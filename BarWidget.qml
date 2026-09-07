@@ -26,6 +26,7 @@ BarWidget {
   function warning(p) {
     if (!Model.fresh(p, now)) return "!"
     for (var i = 0; i < p.windows.length; i++) {
+      if (p.windows[i].id !== "weekly" && p.windows[i].id !== "fable-weekly") continue
       var f = Pace.evaluate(p.windows[i], p.observedAt, now, true)
       if (f && (f.status === "urgent" || f.status === "exhausted")) return "󰈸"
     }
@@ -100,6 +101,7 @@ BarWidget {
           }
           Text {
             text: root.warning(chip.modelData)
+            visible: text !== ""
             width: Style.font.iconSmall
             anchors.verticalCenter: parent.verticalCenter
             color: text === "!" ? button.foreground : root.bar ? root.bar.urgent : Color.urgent

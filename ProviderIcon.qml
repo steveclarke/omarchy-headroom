@@ -8,7 +8,7 @@ Item {
   Image {
     id: mark
     anchors.fill: parent
-    source: Qt.resolvedUrl("assets/" + root.provider + ".svg")
+    source: Qt.resolvedUrl("assets/" + (root.provider === "codex" ? "openai" : root.provider) + ".svg")
     sourceSize: Qt.size(width * 2, height * 2)
     visible: false
   }
