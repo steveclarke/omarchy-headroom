@@ -29,7 +29,8 @@ Synthetic values; the interface follows the active Omarchy theme.
 
 - Omarchy with the Quattro shell, native plugin services, and `omarchy-agent-usage-claude` / `omarchy-agent-usage-codex` collectors.
 - Python 3 and signed-in Claude Code / Codex CLIs.
-- Bun and Node.js for installing/running the pinned ccusage cost reader; Qt 6 graphical effects (normally provided by Omarchy).
+- Bun and Node.js for installing/running the pinned ccusage cost reader.
+- `qt6-5compat` for monochrome icon tinting.
 
 ## Install
 
@@ -59,7 +60,7 @@ If an update still shows the old behavior, run `omarchy restart shell` to clear 
 
 ## Cost estimates
 
-[ccusage](https://github.com/ccusage/ccusage) 20.0.20 reads local Claude Code and Codex history. Headroom requests daily reports with bundled offline pricing, preserving recorded costs when available. It retains only daily USD totals, not project names or model/token details. Cost reading runs separately from quota collection. No usage history is uploaded.
+[ccusage](https://github.com/ccusage/ccusage) 20.0.20 reads local Claude Code and Codex history. Headroom requests daily reports with bundled offline pricing, preserving recorded costs when available. It retains only daily USD totals, not project names or model/token details. Cost reading runs separately from quota collection. No usage history is uploaded. `bin/setup-costs` installs the locked reader under `$XDG_DATA_HOME/headroom/ccusage-20.0.20` (default `~/.local/share/headroom/ccusage-20.0.20`), outside the validated plugin folder.
 
 These are estimated API-equivalent usage values, **not subscription charges**. Coverage is this machine's available local history; it does not include sessions on other computers. Today and Yesterday use the local calendar; 30 Days includes today and the previous 29 days. Missing or incomplete pricing shows `—`, never an invented zero or a misleading combined total. Model mappings, deduplication and pricing accuracy depend on the pinned reader; prices can change.
 

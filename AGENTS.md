@@ -1,6 +1,6 @@
 # Development guidance
 
-Keep this proof of concept focused on Claude Code and Codex quota visibility and forecasts.
+Keep this proof of concept focused on Claude Code and Codex quota visibility, local usage cost estimates, and forecasts.
 
 - Use the installed Omarchy shell's public plugin contracts and native components.
 - Read existing implementation before editing. Do not modify packaged Omarchy files.

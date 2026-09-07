@@ -1,0 +1,127 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-09-07T16:14:09Z",
+  "title": "Design System: Headroom",
+  "extensions": {
+    "colorMeta": {
+      "cost-claude": { "role": "secondary", "displayName": "Warm coral" },
+      "cost-codex": { "role": "secondary", "displayName": "Green teal" }
+    },
+    "typographyMeta": {
+      "body": { "displayName": "Native sans-serif", "purpose": "Panel labels and bar percentages, sized through Style.space()." }
+    },
+    "motion": [
+      { "name": "cost-period-selection", "value": "NumberAnimation { duration: 150; easing.type: Easing.OutCubic }", "purpose": "Move the selected period pill along the x axis." }
+    ],
+    "native": {
+      "platform": "Linux / Omarchy / Quickshell / QML",
+      "sources": ["Panel.qml", "BarWidget.qml", "TintedIcon.qml", "Costs.js", "Model.js", "Pace.js"],
+      "measurementConvention": "Style.space(n) resolves native shell scaling; values are not a CSS pixel scale.",
+      "previewSupport": "Native component metadata only. No HTML/CSS surrogate gallery or synthesized tonal ramps.",
+      "colorExpressions": {
+        "surface": "Color.popups.background.hslLightness > 0.5 ? mix(Color.popups.background, \"white\", 0.68) : Color.popups.background",
+        "foreground": "Color.popups.text",
+        "group": "mix(surface, foreground, 0.035)",
+        "track": "mix(group, foreground, 0.14)",
+        "selectorBed": "mix(group, foreground, 0.055)",
+        "dim": "legible(mix(foreground, surface, 0.22), mix(group, foreground, 0.055))",
+        "caution": "legible(surface.hslLightness > 0.5 ? \"#956015\" : \"#edb86b\", group)",
+        "urgent": "legible(Color.urgent, group)",
+        "quotaFill": "Color.accent",
+        "barForeground": "button.foreground",
+        "barUrgent": "root.bar ? root.bar.urgent : Color.urgent"
+      },
+      "colorFunctions": {
+        "mix": "Linear interpolation of the Qt.color RGB channels, with alpha 1.",
+        "legible": "Mix ink toward foreground in 0.1 steps, returning the first candidate with calculated sRGB contrast >= 4.65 against the supplied background; fall back to foreground."
+      },
+      "typeRoles": {
+        "costTotal": { "size": "Style.space(20)", "weight": "Font.DemiBold", "fitMinimum": "Style.space(12)" },
+        "sectionHeading": { "size": "Style.space(18)", "weight": "Font.DemiBold" },
+        "quotaTitle": { "size": "Style.space(16)", "weight": "Font.DemiBold" },
+        "body": { "size": "Style.space(14)", "weight": "Font.Normal" },
+        "compactLabel": { "size": "Style.space(13)", "weight": "Font.Normal" },
+        "supporting": { "sizes": ["Style.space(11)", "Style.space(12)"], "weight": "Font.Normal; Font.DemiBold for warnings and Refresh" },
+        "barPercentage": { "size": "Style.space(14)", "weight": "Font.DemiBold", "width": "Math.ceil(valueSize.width), measured from 100%" }
+      },
+      "geometry": {
+        "panelContentWidth": "panel.fittedContentWidth(Style.space(400))",
+        "panelContentHeight": "panel.fittedContentHeight(content.implicitHeight, Style.space(1000))",
+        "panelPadding": "Style.space(18)",
+        "panelRadius": "Style.space(18)",
+        "groupRadius": "Style.space(14)",
+        "sectionGap": "Style.space(22)",
+        "costInset": "Style.space(14)",
+        "quotaInset": "Style.space(16)",
+        "quotaGap": "Style.space(22)",
+        "meterHeight": "Style.space(6)",
+        "pillRadius": "height / 2"
+      },
+      "panelOwnership": "KeyboardPanel owns positioning, focus, dismissal and native transitions. Guarded instance Binding objects set the native card radius and color. No packaged shell changes or custom shadow.",
+      "components": [
+        {
+          "name": "Weekly bar summary",
+          "source": "BarWidget.qml",
+          "description": "Two monochrome provider marks and measured-width weekly percentages. Horizontal with separator or stacked for a vertical bar. Stale and weekly urgency indicators accompany the values.",
+          "states": ["normal", "stale", "weekly urgent or exhausted", "unavailable", "panel open"]
+        },
+        {
+          "name": "Cost period selector",
+          "source": "Panel.qml",
+          "description": "Three equal AbstractButton tabs on a rounded bed; a surface-colored pill marks the selected period. Pointer, left/right arrows and keys 1-3 operate the selection.",
+          "height": "Style.space(34)",
+          "inset": "Style.space(3)",
+          "states": ["unselected: dim", "selected: foreground and Font.DemiBold", "hovered: foreground"]
+        },
+        {
+          "name": "Cost ring and legend",
+          "source": "Panel.qml; Costs.js",
+          "description": "Canvas ring with the two frontmatter cost colors, a rounded whole-dollar total and USD label, plus named legend entries with exact two-decimal amounts. Missing totals leave the ring neutral.",
+          "ringSize": "Style.space(134)",
+          "strokeWidth": "Style.space(24)",
+          "states": ["fresh amounts", "fresh zero", "loading", "unavailable", "outdated"]
+        },
+        {
+          "name": "Provider quota group",
+          "source": "Panel.qml; Model.js; Pace.js",
+          "description": "Provider heading above a rounded inset group containing quota titles, thin shared-accent meters, remaining percentages, reset text and buffer or exhaustion forecasts.",
+          "states": ["calm forecast: dim", "caution forecast: caution and Font.DemiBold", "urgent or exhausted: urgent, Font.DemiBold and flame", "stale: status, fill opacity 0.4 and no forecast", "missing or expired: em dash and empty meter"]
+        },
+        {
+          "name": "Refresh and status footer",
+          "source": "Panel.qml",
+          "description": "Text status beside a pill action; status identifies refresh activity and synthetic previews.",
+          "size": "Style.space(76) by Style.space(30)",
+          "states": ["rest: group background", "hover: track background", "disabled: dim text"]
+        }
+      ]
+    }
+  },
+  "components": [],
+  "narrative": {
+    "northStar": "A compact desktop usage instrument",
+    "overview": "Headroom is a Linux Omarchy plugin built with Quickshell and QML. Its visual language combines monochrome provider marks, soft grouped surfaces, clear sans-serif labels, and thin accent meters. The bar is compact; the popup gives the figures enough space to read together.\n\nThe native shell supplies theme colors, scaling, and panel behavior. `Panel.qml`, `BarWidget.qml`, and `TintedIcon.qml` are the visual source of truth. The frontmatter records fixed primitives only; native expressions and component metadata live in [.impeccable/design.json](.impeccable/design.json).",
+    "keyCharacteristics": [
+      "Rounded outer surface with quiet inset groups.",
+      "Strong headings and amounts, subdued supporting text.",
+      "Provider color confined to the cost split; shared theme accent for allowance.",
+      "Explicit text for unavailable readings, resets, and forecast warnings."
+    ],
+    "rules": [
+      { "name": "The Separate Roles Rule", "body": "Cost colors identify providers, the accent measures remaining allowance, and warning colors accompany forecast text.", "section": "colors" }
+    ],
+    "dos": [
+      "Do keep theme colors and `Style.space()` expressions live.",
+      "Do retain text, units, and accessible names alongside charts, colors, and icons.",
+      "Do distinguish missing, stale, expired, and zero readings.",
+      "Do preserve the native panel lifecycle and keyboard controls.",
+      "Do use synthetic data and identify it in previews."
+    ],
+    "donts": [
+      "Don't hardcode the captured blue accent or a captured light/dark palette.",
+      "Don't use cost colors to tint provider quota groups or replace forecast text with color alone.",
+      "Don't add provider tabs, Extra Usage, or Usage Trend sections to this widget.",
+      "Don't put every quota row in a separate card or add decorative animation."
+    ]
+  }
+}
