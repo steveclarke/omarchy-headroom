@@ -44,7 +44,7 @@ Popup text uses `Color.popups.text`. The popup surface uses `Color.popups.backgr
 
 Secondary text begins with a foreground-to-surface mix. `legible()` adjusts it toward the foreground against the selector bed; urgency uses the same adjustment against the group. The function seeks a calculated contrast ratio of at least 4.65, with the popup foreground as its fallback. Theme-derived colors remain expressions, not captured light/dark hex palettes.
 
-Caution is a meter color: `#c49a16` on a light surface and `#edc35b` on a dark surface. Urgency starts from `Color.urgent`. Warning text stays secondary; only the flame takes the urgency color. The bar uses `WidgetButton.foreground`, including the shell's wallpaper-aware contrast, and the bar's urgent color for flame warnings.
+Caution is a meter color: `#c49a16` on a light surface and `#edc35b` on a dark surface. Urgency starts from `Color.urgent`. Warning text stays secondary; the flame takes the urgency color. The spare-buffer hourglass uses `#916900` on light surfaces and the caution color on dark surfaces for legibility. The bar uses `WidgetButton.foreground`, including the shell's wallpaper-aware contrast, and the bar's urgent color for flame warnings.
 
 **The Separate Roles Rule.** Cost colors identify providers. Quota color communicates capacity state; the fill length always measures remaining allowance. Warning labels use secondary text.
 
@@ -103,7 +103,7 @@ The ring total is rounded to whole dollars; the adjacent provider amounts show t
 
 A monochrome provider mark, heading, and subdued plan label introduce each group. Session, Weekly, and reported model-specific windows appear together. The meter represents allowance remaining, followed by a textual percentage and reset countdown.
 
-Healthy forecasts with at least 10% projected spare have no visible note or marker. Hovering the meter reveals the projection. A smaller buffer that rounds to at least 1% shows a yellow meter and a normal-weight secondary `~N% spare` note beside the title. A buffer that rounds to zero, or projected exhaustion before reset, shows a red meter and flame; a meaningful exhaustion estimate accompanies the flame. A displayed zero remaining shows `Limit reached`. Warning text stays secondary and normal weight. Forecast tooltips explain the average-use basis.
+Healthy forecasts with at least 10% projected spare have no visible note or marker. Hovering the meter reveals the projection. A smaller buffer that rounds to at least 1% shows a yellow meter and an amber hourglass beside a normal-weight secondary `~N% spare` note on the title line. A buffer that rounds to zero, or projected exhaustion before reset, shows a red meter and flame; a meaningful exhaustion estimate accompanies the flame. A displayed zero remaining shows `Limit reached`. Warning icons use the native Nerd Font library at `Style.space(16)`, vertically centered alongside the supporting text with a `Style.space(4)` gap. Warning text stays secondary and normal weight. Forecast tooltips explain the average-use basis.
 
 Very early readings below 5% usage suppress extrapolated alarms. Without a usable projection, fresh readings use absolute rounded-usage bands: yellow at 80% used and red at 90%, without a pacing note or marker. Missing or expired percentages use an em dash and an empty meter. Stale unexpired readings retain their numbers with reduced fill opacity (0.4), an explicit status, and no forecast.
 

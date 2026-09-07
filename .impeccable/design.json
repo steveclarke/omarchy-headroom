@@ -27,6 +27,7 @@
         "dim": "legible(mix(foreground, surface, 0.22), mix(group, foreground, 0.055))",
         "caution": "surface.hslLightness > 0.5 ? \"#c49a16\" : \"#edc35b\"",
         "urgent": "legible(Color.urgent, group)",
+        "cautionIcon": "surface.hslLightness > 0.5 ? \"#916900\" : caution",
         "quotaFill": "meterColor(Pace.severity(window, forecast, now, fresh))",
         "barForeground": "button.foreground",
         "barUrgent": "root.bar ? root.bar.urgent : Color.urgent"
@@ -55,6 +56,8 @@
         "quotaInset": "Style.space(16)",
         "quotaGap": "Style.space(22)",
         "meterHeight": "Style.space(6)",
+        "warningIconSize": "Style.space(16)",
+        "warningIconGap": "Style.space(4)",
         "pillRadius": "height / 2"
       },
       "panelOwnership": "KeyboardPanel owns positioning, focus, dismissal and native transitions. Guarded instance Binding objects set the native card radius and color. No packaged shell changes or custom shadow.",
@@ -85,7 +88,7 @@
           "name": "Provider quota group",
           "source": "Panel.qml; Model.js; Pace.js",
           "description": "Provider heading above a rounded inset group containing quota titles with conditional warnings, thin state-colored meters, remaining percentages and reset text. Healthy projections are available on hover.",
-          "states": ["calm forecast: theme-accent fill, no note or marker, hover projection", "caution forecast: yellow fill and pace marker, dim normal-weight spare note", "urgent: urgency fill and flame, pace marker, dim normal-weight ETA when available", "exhausted: urgency fill and flame, Limit reached, no marker", "fresh without projection: absolute usage bands at 80% and 90%, no note or marker", "stale: status, fill opacity 0.4 and no forecast", "missing or expired: em dash and empty meter"]
+          "states": ["calm forecast: theme-accent fill, no note or marker, hover projection", "caution forecast: yellow fill and pace marker, amber hourglass and dim normal-weight spare note", "urgent: urgency fill and flame, pace marker, dim normal-weight ETA when available", "exhausted: urgency fill and flame, Limit reached, no marker", "fresh without projection: absolute usage bands at 80% and 90%, no note or marker", "stale: status, fill opacity 0.4 and no forecast", "missing or expired: em dash and empty meter"]
         },
         {
           "name": "Refresh and status footer",

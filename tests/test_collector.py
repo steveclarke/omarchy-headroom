@@ -84,13 +84,17 @@ class CollectorTest(unittest.TestCase):
             pid = int(pid_file.read_text())
             stat = Path(f'/proc/{pid}/stat')
             # A killed child can briefly remain a zombie until init reaps it.
-            self.assertTrue(not stat.exists() or stat.read_text().split()[2] == 'Z')
+            try:
+                state = stat.read_text().rsplit(')', 1)[1].split()[0]
+            except (FileNotFoundError, ProcessLookupError):
+                state = None
+            self.assertIn(state, (None, 'Z'))
 
     def test_launcher_kill_stops_collectors_and_grandchildren(self):
         def alive(pid):
             try:
                 return Path(f'/proc/{pid}/stat').read_text().rsplit(')', 1)[1].split()[0] != 'Z'
-            except FileNotFoundError:
+            except (FileNotFoundError, ProcessLookupError):
                 return False
 
         with tempfile.TemporaryDirectory() as directory:

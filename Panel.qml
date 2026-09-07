@@ -25,6 +25,7 @@ Panel {
   readonly property color dim: legible(mix(foreground, surface, 0.22), mix(group, foreground, 0.055))
   readonly property color urgent: legible(Color.urgent, group)
   readonly property color caution: surface.hslLightness > 0.5 ? "#c49a16" : "#edc35b"
+  readonly property color cautionIcon: surface.hslLightness > 0.5 ? "#916900" : caution
   readonly property color claudeColor: "#d77b5f"
   readonly property color codexColor: "#279b80"
   readonly property var costAmounts: [Costs.amount(costs, 0, period, now), Costs.amount(costs, 1, period, now)]
@@ -342,17 +343,21 @@ Panel {
                           visible: metric.flame || warningText.text !== ""
                           Row {
                             id: warningContents
-                            spacing: Style.space(3)
+                            spacing: Style.space(4)
                             Label {
-                              visible: metric.flame
-                              text: "󰈸"; color: root.urgent
-                              font.pixelSize: Style.space(11)
+                              visible: metric.flame || (metric.forecast !== null && metric.forecast.status === "caution")
+                              text: metric.flame ? "󰈸" : "󰔟"
+                              color: metric.flame ? root.urgent : root.cautionIcon
+                              font.family: "JetBrainsMono Nerd Font"
+                              font.pixelSize: Style.space(16)
+                              anchors.verticalCenter: parent.verticalCenter
                             }
                             Label {
                               id: warningText
                               visible: text !== ""
                               text: Pace.summary(metric.forecast, root.now)
                               color: root.dim; font.pixelSize: Style.space(11)
+                              anchors.verticalCenter: parent.verticalCenter
                             }
                           }
                           MouseArea {
