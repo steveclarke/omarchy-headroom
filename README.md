@@ -41,6 +41,7 @@ omarchy plugin enable omarchy.agents
 ```
 
 Update with `omarchy plugin update io.github.steveclarke.headroom`.
+If an update still shows the old behavior, run `omarchy restart shell` to clear the shell's compiled QML cache.
 
 ## Current limitations
 
