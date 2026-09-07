@@ -50,7 +50,7 @@ Caution is a meter color: `#c49a16` on a light surface and `#edc35b` on a dark s
 
 ## Typography
 
-Panel labels and bar percentages use Qt's `sans-serif` family. Normal and `Font.DemiBold` weights create hierarchy without a second text family. All sizes below are arguments to `Style.space()`, not fixed CSS pixels.
+Panel labels use Qt's `sans-serif` family. Normal and `Font.DemiBold` weights create hierarchy without a second text family. All sizes below are arguments to `Style.space()`, not fixed CSS pixels.
 
 | Role | QML size | Weight and use |
 |---|---|---|
@@ -61,7 +61,7 @@ Panel labels and bar percentages use Qt's `sans-serif` family. Normal and `Font.
 | Compact label | `Style.space(13)` | Periods, plans, resets, and exact costs; selected period is DemiBold |
 | Supporting text | `Style.space(11)`–`Style.space(12)` | Units, status, forecasts, and Refresh; only Refresh uses DemiBold |
 
-Bar percentages are DemiBold at `Style.space(14)`, right-aligned in a width measured from `100%`. The ring total and legend amounts can shrink to fit. Plan names and quota titles elide; status and reset text can wrap. Forecast warnings stay on the title line, with the title yielding space to the warning.
+Bar percentages inherit the native `WidgetButton` font family and `Style.font.body` size, with normal weight and native text rendering. Provider marks use `Style.bar.iconCanvas`; warning glyphs use `Style.bar.iconFont` in the same icon canvas. These shared values honor the shell font and bar-size settings. Percentages are right-aligned in a width measured from `100%`. The ring total and legend amounts can shrink to fit. Plan names and quota titles elide; status and reset text can wrap. Forecast warnings stay on the title line, with the title yielding space to the warning.
 
 ## Layout
 

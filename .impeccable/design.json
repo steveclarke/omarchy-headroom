@@ -8,7 +8,7 @@
       "cost-codex": { "role": "secondary", "displayName": "Green teal" }
     },
     "typographyMeta": {
-      "body": { "displayName": "Native sans-serif", "purpose": "Panel labels and bar percentages, sized through Style.space()." }
+      "body": { "displayName": "Native sans-serif", "purpose": "Panel labels sized through Style.space(); bar text inherits the native WidgetButton font settings." }
     },
     "motion": [
       { "name": "cost-period-selection", "value": "NumberAnimation { duration: 150; easing.type: Easing.OutCubic }", "purpose": "Move the selected period pill along the x axis." }
@@ -43,7 +43,7 @@
         "body": { "size": "Style.space(14)", "weight": "Font.Normal" },
         "compactLabel": { "size": "Style.space(13)", "weight": "Font.Normal" },
         "supporting": { "sizes": ["Style.space(11)", "Style.space(12)"], "weight": "Font.Normal; Font.DemiBold for Refresh" },
-        "barPercentage": { "size": "Style.space(14)", "weight": "Font.DemiBold", "width": "Math.ceil(valueSize.width), measured from 100%" }
+        "barPercentage": { "size": "button.fontSize (Style.font.body)", "family": "button.fontFamily", "weight": "Font.Normal", "width": "Math.ceil(valueSize.width), measured from 100%" }
       },
       "geometry": {
         "panelContentWidth": "panel.fittedContentWidth(Style.space(400))",

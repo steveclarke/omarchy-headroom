@@ -76,7 +76,7 @@ BarWidget {
             anchors.verticalCenter: parent.verticalCenter
             iconSource: Qt.resolvedUrl("assets/" + (chip.modelData.id === "codex" ? "openai" : "claude") + ".svg")
             ink: button.foreground
-            width: Style.space(19)
+            width: Style.bar.iconCanvas
             height: width
           }
           Text {
@@ -87,20 +87,21 @@ BarWidget {
             text: Model.percentage(Model.find(chip.modelData, "weekly"), root.now)
             horizontalAlignment: Text.AlignRight
             color: button.foreground
-            font.family: "sans-serif"
-            font.pixelSize: Style.space(14)
-            font.weight: Font.DemiBold
+            font.family: button.fontFamily
+            font.pixelSize: button.fontSize
+            renderType: Text.NativeRendering
             TextMetrics { id: valueSize; text: "100%"; font: value.font }
           }
           Text {
             textFormat: Text.PlainText
             text: root.warning(chip.modelData)
             visible: text !== ""
-            width: Style.font.iconSmall
+            width: Style.bar.iconCanvas
             anchors.verticalCenter: parent.verticalCenter
             color: text === "!" ? button.foreground : root.bar ? root.bar.urgent : Color.urgent
             font.family: button.fontFamily
-            font.pixelSize: Style.font.iconSmall
+            font.pixelSize: Style.bar.iconFont
+            renderType: Text.NativeRendering
           }
         }
       }
