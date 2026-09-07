@@ -71,15 +71,7 @@ BarWidget {
         Row {
           id: chip
           required property var modelData
-          required property int index
           spacing: Style.space(6)
-          Rectangle {
-            visible: chip.index > 0 && !root.vertical
-            anchors.verticalCenter: parent.verticalCenter
-            width: Style.space(1)
-            height: Style.space(12)
-            color: Qt.rgba(button.foreground.r, button.foreground.g, button.foreground.b, 0.22)
-          }
           TintedIcon {
             anchors.verticalCenter: parent.verticalCenter
             iconSource: Qt.resolvedUrl("assets/" + (chip.modelData.id === "codex" ? "openai" : "claude") + ".svg")

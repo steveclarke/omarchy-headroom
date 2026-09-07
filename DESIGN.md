@@ -71,7 +71,7 @@ Major sections are separated by `Style.space(22)`. Cost content has `Style.space
 
 The cost group places the three-period selector above a ring and an aligned provider legend. Each provider heading sits outside its inset quota group. Inside a quota row, the order is title with any warning right-aligned alongside it, meter, then remaining percentage on the left with reset on the right. There is no forecast row beneath those figures. The footer pairs update status with Refresh.
 
-The bar shows two provider summaries horizontally, separated by a fine rule. On a vertical bar they stack and the separator disappears. Both providers remain visible in either orientation.
+The bar shows two provider summaries horizontally with space between them and no divider. On a vertical bar they stack. Both providers remain visible in either orientation.
 
 ## Elevation & Depth
 

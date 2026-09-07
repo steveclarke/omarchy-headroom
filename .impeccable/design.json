@@ -65,7 +65,7 @@
         {
           "name": "Weekly bar summary",
           "source": "BarWidget.qml",
-          "description": "Two monochrome provider marks and measured-width weekly percentages. Horizontal with separator or stacked for a vertical bar. Stale and weekly urgency indicators accompany the values.",
+          "description": "Two monochrome provider marks and measured-width weekly percentages. Horizontal with a plain gap and no divider, or stacked for a vertical bar. Stale and weekly urgency indicators accompany the values.",
           "states": ["normal", "stale", "weekly urgent or exhausted", "unavailable", "panel open"]
         },
         {
