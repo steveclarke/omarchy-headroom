@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """Install Headroom's pinned local cost reader. Quota collection needs no Node dependencies."""
 from pathlib import Path
+import json
+import os
 import shutil
 import subprocess
 import sys
@@ -8,5 +10,16 @@ import sys
 if not shutil.which("bun"):
     sys.exit("Install Bun, then run bin/setup-costs again.")
 runtime = Path(__file__).resolve().parents[1] / "runtime"
-subprocess.run(["bun", "install", "--cwd", str(runtime), "--frozen-lockfile"], check=True)
-subprocess.run([str(runtime / "node_modules/.bin/ccusage"), "--version"], check=True)
+version = json.loads((runtime / "package.json").read_text())["dependencies"]["ccusage"]
+data_home = Path(os.environ.get("XDG_DATA_HOME", str(Path.home() / ".local/share")))
+destination = data_home / "headroom" / ("ccusage-" + version)
+destination.mkdir(parents=True, exist_ok=True)
+for name in ["package.json", "bun.lock"]:
+    shutil.copy2(runtime / name, destination / name)
+subprocess.run(["bun", "install", "--cwd", str(destination), "--frozen-lockfile"], check=True)
+subprocess.run([str(destination / "node_modules/.bin/ccusage"), "--version"], check=True)
+# Migrate the first development installation out of the plugin tree: Omarchy
+# deliberately rejects symlinks there, including package-manager bin links.
+legacy = runtime / "node_modules"
+if legacy.is_dir() and not legacy.is_symlink():
+    shutil.rmtree(legacy)

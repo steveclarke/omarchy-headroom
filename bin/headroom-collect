@@ -261,7 +261,9 @@ def normalize_costs(record, provider, today):
 
 def collect_cost(provider):
     runtime = Path(__file__).resolve().parents[1] / "runtime"
-    reader = runtime / "node_modules/.bin/ccusage"
+    version = json.loads((runtime / "package.json").read_text())["dependencies"]["ccusage"]
+    data_home = Path(os.environ.get("XDG_DATA_HOME", str(Path.home() / ".local/share")))
+    reader = data_home / "headroom" / ("ccusage-" + version) / "node_modules/.bin/ccusage"
     if not reader.exists():
         return {"id": provider, "state": "unavailable", "daily": {},
                 "message": "Cost reader missing · run bin/setup-costs"}
