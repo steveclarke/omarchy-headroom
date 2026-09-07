@@ -1,0 +1,38 @@
+#!/usr/bin/env python3
+"""Exercise actual QML worker boundaries offscreen, using only generated helpers."""
+from pathlib import Path
+import os,subprocess,tempfile,shutil,json
+source=Path(__file__).resolve().parents[1]
+with tempfile.TemporaryDirectory(prefix='headroom-qml-review-') as directory:
+ root=Path(directory)
+ for name in ('CollectorProcess.qml','Wire.js','Service.qml','Costs.js','Model.js'): shutil.copyfile(source/name,root/name)
+ (root/'bin').mkdir()
+ doc={'schema':1,'observedAt':100,'providers':[{'id':id,'state':'fresh','message':'','daily':{}} for id in ('claude','codex')]}
+ for mode in ('valid','malformed','oversized','stderr','cancel'):
+  script='import sys,time\n'
+  if mode=='valid': script+='print('+repr(json.dumps(doc))+')\n'
+  elif mode=='malformed': script+='print(\'{"schema":1,"providers":[{},{}]}\')\n'
+  elif mode=='oversized': script+='print("x"*200000)\n'
+  elif mode=='stderr': script+='sys.stderr.write("x"*20000); print('+repr(json.dumps(doc))+')\n'
+  else: script+='time.sleep(30)\n'
+  (root/'bin/headroom-collect').write_text(script)
+  callback='console.log("FIXTURE_COMPLETED"); Qt.quit()' if mode=='valid' else 'console.log("UNEXPECTED_COMPLETION"); Qt.exit(2)'
+  failure='console.log("FIXTURE_FAILED_CLOSED"); Qt.quit()' if mode in ('malformed','oversized','stderr') else 'console.log("UNEXPECTED_FAILURE"); Qt.exit(2)'
+  cancel='Timer { interval:100; running:true; onTriggered: c.cancel() } Timer { interval:500; running:true; onTriggered: { if (c.active) Qt.exit(3); else { console.log("FIXTURE_CANCELLED"); Qt.quit() } } }' if mode=='cancel' else ''
+  (root/'shell.qml').write_text('import QtQuick\nimport Quickshell\nShellRoot { CollectorProcess { id:c; costs:true; onCompleted: {'+callback+'} onFailed: {'+failure+'} } Component.onCompleted:c.start(); Timer { interval:3000; running:true; onTriggered:Qt.exit(4) } '+cancel+' }')
+  runtime=root/'runtime'; runtime.mkdir(mode=0o700,exist_ok=True)
+  env=dict(os.environ,QT_QPA_PLATFORM='offscreen',QT_QPA_PLATFORMTHEME='',QT_QUICK_CONTROLS_STYLE='Basic',XDG_RUNTIME_DIR=str(runtime));env.pop('WAYLAND_DISPLAY',None);env.pop('DISPLAY',None)
+  result=subprocess.run(['/usr/bin/quickshell','-p',str(root/'shell.qml')],env=env,capture_output=True,text=True,timeout=5)
+  output=result.stdout+result.stderr
+  if result.returncode or 'UNEXPECTED_' in output or 'FIXTURE_' not in output: print(mode,output);raise SystemExit(1)
+  print(mode+': '+next(line.strip() for line in output.splitlines() if 'FIXTURE_' in line))
+
+ # Service timers must recover after either a manual or scheduled clock rollback.
+ for mode in ('manual-clock', 'scheduled-clock'):
+  (root/'bin/headroom-collect').write_text('print('+repr(json.dumps(doc))+')\n')
+  action = 's.refresh();' if mode == 'manual-clock' else ''
+  (root/'shell.qml').write_text('import QtQuick\nimport Quickshell\nShellRoot { Service { id:s } Timer { interval:1300; running:true; onTriggered:{ s.lastAttemptAt=Date.now()+3600000; s.lastCostAttemptAt=s.lastAttemptAt; s.nextRefreshAt=s.lastAttemptAt; s.nextCostRefreshAt=s.lastAttemptAt; s.nowMs=s.lastAttemptAt; '+action+' } } Timer { interval:2500; running:true; onTriggered:{ if(s.batchesStarted<2) Qt.exit(3); else {console.log("FIXTURE_CLOCK_RECOVERED");Qt.quit()} } } }')
+  result=subprocess.run(['/usr/bin/quickshell','-p',str(root/'shell.qml')],env=env,capture_output=True,text=True,timeout=4)
+  output=result.stdout+result.stderr
+  if result.returncode or 'FIXTURE_CLOCK_RECOVERED' not in output: print(mode,output);raise SystemExit(1)
+  print(mode+': FIXTURE_CLOCK_RECOVERED')

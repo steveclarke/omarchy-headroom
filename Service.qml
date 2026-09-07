@@ -12,12 +12,12 @@ Item {
   property var manifest: null
   property var providers: [Model.empty("claude"), Model.empty("codex")]
   property var costs: Costs.empty()
-  property bool costsRefreshing: costCollector.running
+  property bool costsRefreshing: costCollector.active
   property double nextCostRefreshAt: 0
   property double lastCostAttemptAt: 0
   property int costPeriod: 0
   property double nowMs: Date.now()
-  property bool refreshing: collector.running
+  property bool refreshing: collector.active
   property string demoMode: ""
   property int batchesStarted: 0
   property double nextRefreshAt: 0
@@ -28,16 +28,18 @@ Item {
     refreshCosts()
     // Coalesce calls from both bars and repeated clicks. Native Claude also
     // absorbs probes inside 15 seconds; don't mislabel that reuse as new data.
-    if (collector.running || Date.now() - lastAttemptAt < 20000) return
+    var age = Date.now() - lastAttemptAt
+    if (collector.active || (age >= 0 && age < 20000)) return
     lastAttemptAt = Date.now()
     batchesStarted++
-    collector.running = true
+    collector.start()
   }
 
   function refreshCosts() {
-    if (demoMode !== "" || costCollector.running || Date.now() - lastCostAttemptAt < 20000) return
+    var age = Date.now() - lastCostAttemptAt
+    if (demoMode !== "" || costCollector.active || (age >= 0 && age < 20000)) return
     lastCostAttemptAt = Date.now()
-    costCollector.running = true
+    costCollector.start()
   }
 
   function failCosts() {
@@ -52,66 +54,47 @@ Item {
 
   function preview(mode) {
     if (["", "normal", "stale", "empty"].indexOf(mode) < 0) return
-    if (collector.running) collector.running = false
-    if (costCollector.running) costCollector.running = false
+    collector.cancel()
+    costCollector.cancel()
     demoMode = mode
+    nextRefreshAt = Date.now(); nextCostRefreshAt = Date.now()
     nowMs = Date.now()
     if (mode === "") { providers = [Model.empty("claude"), Model.empty("codex")]; costs = Costs.empty(); lastAttemptAt = 0; lastCostAttemptAt = 0; refresh() }
     else { providers = Model.demo(nowMs, mode); costs = Costs.demo(nowMs, mode) }
   }
 
   Component.onCompleted: startup.start()
-  Component.onDestruction: { collector.running = false; costCollector.running = false }
+  Component.onDestruction: { collector.cancel(); costCollector.cancel() }
   Timer { id: startup; interval: 1000; onTriggered: root.refresh() }
   Timer {
     interval: 1000; repeat: true; running: true
     onTriggered: {
-      root.nowMs = Date.now()
-      if (root.demoMode === "" && !collector.running && root.nextRefreshAt > 0 && root.nowMs >= root.nextRefreshAt) root.refresh()
-      if (root.demoMode === "" && !costCollector.running && root.nextCostRefreshAt > 0 && root.nowMs >= root.nextCostRefreshAt) root.refreshCosts()
+      var current = Date.now()
+      if (current < root.nowMs) {
+        root.lastAttemptAt = 0; root.lastCostAttemptAt = 0
+        root.nextRefreshAt = current; root.nextCostRefreshAt = current
+      }
+      root.nowMs = current
+      if (root.demoMode === "" && !collector.active && root.nextRefreshAt > 0 && root.nowMs >= root.nextRefreshAt) root.refresh()
+      if (root.demoMode === "" && !costCollector.active && root.nextCostRefreshAt > 0 && root.nowMs >= root.nextCostRefreshAt) root.refreshCosts()
     }
   }
-  Timer {
-    interval: 70000; running: costCollector.running
-    onTriggered: { costCollector.running = false; root.failCosts(); root.nextCostRefreshAt = Date.now() + 300000 }
-  }
-  Process {
+  CollectorProcess {
     id: costCollector
-    command: ["sh", "-c", "python3 \"$1\" --parent \"$$\" --costs & wait", "headroom-costs",
-      Qt.resolvedUrl("bin/headroom-collect").toString().replace(/^file:\/\//, "")]
-    stdout: StdioCollector { id: costOutput; waitForEnd: true }
-    stderr: StdioCollector { waitForEnd: true }
-    onExited: function(exitCode) {
-      if (root.demoMode !== "") return
+    costs: true
+    onCompleted: function(doc) {
       root.nextCostRefreshAt = Date.now() + 300000
-      try {
-        var doc = JSON.parse(costOutput.text)
-        if (exitCode !== 0 || doc.schema !== 1 || !Array.isArray(doc.providers) || doc.providers.length !== 2) throw new Error("invalid")
-        root.costs = doc
-      } catch (e) { root.failCosts() }
+      root.costs = doc
     }
+    onFailed: { root.failCosts(); root.nextCostRefreshAt = Date.now() + 300000 }
   }
-  Timer {
-    interval: 70000; running: collector.running
-    onTriggered: { collector.running = false; root.fail("Usage check timed out · try refreshing"); root.nextRefreshAt = Date.now() + 300000 }
-  }
-  Process {
+  CollectorProcess {
     id: collector
-    // Quickshell kills its direct child on destruction. Keep the collector
-    // separate so it can observe launcher death and stop its process groups.
-    command: ["sh", "-c", "python3 \"$1\" --parent \"$$\" & wait", "headroom",
-      Qt.resolvedUrl("bin/headroom-collect").toString().replace(/^file:\/\//, "")]
-    stdout: StdioCollector { id: output; waitForEnd: true }
-    stderr: StdioCollector { waitForEnd: true }
-    onExited: function(exitCode) {
-      if (root.demoMode !== "") return
+    onCompleted: function(doc) {
       root.nextRefreshAt = Date.now() + 300000
-      try {
-        var doc = JSON.parse(output.text)
-        if (exitCode !== 0 || doc.schema !== 1 || !Array.isArray(doc.providers) || doc.providers.length !== 2) throw new Error("invalid")
-        root.providers = doc.providers.map(function(p, i) { return Model.merge(root.providers[i], p) })
-      } catch (e) { root.fail("Could not read usage · try refreshing") }
+      root.providers = doc.providers.map(function(p, i) { return Model.merge(root.providers[i], p) })
     }
+    onFailed: { root.fail("Could not read usage · try refreshing"); root.nextRefreshAt = Date.now() + 300000 }
   }
   IpcHandler {
     target: "headroom"

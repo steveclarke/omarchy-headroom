@@ -80,6 +80,7 @@ BarWidget {
             height: width
           }
           Text {
+            textFormat: Text.PlainText
             id: value
             anchors.verticalCenter: parent.verticalCenter
             width: Math.ceil(valueSize.width)
@@ -92,6 +93,7 @@ BarWidget {
             TextMetrics { id: valueSize; text: "100%"; font: value.font }
           }
           Text {
+            textFormat: Text.PlainText
             text: root.warning(chip.modelData)
             visible: text !== ""
             width: Style.font.iconSmall

@@ -1,0 +1,55 @@
+#!/usr/bin/env python3
+"""Offline integration checks: pass the absolute path of the pinned reader."""
+import datetime as dt
+import importlib.machinery
+import importlib.util
+import json
+import os
+from pathlib import Path
+import sys
+import tempfile
+from unittest.mock import patch
+
+loader = importlib.machinery.SourceFileLoader('collector', str(Path(__file__).resolve().parents[1] / 'bin/headroom-collect'))
+spec = importlib.util.spec_from_loader(loader.name, loader)
+c = importlib.util.module_from_spec(spec)
+loader.exec_module(c)
+reader = str(Path(sys.argv[1]).absolute())
+with tempfile.TemporaryDirectory(prefix='headroom-reader-test-') as directory:
+    root = Path(directory)
+    config = root / 'config.json'; config.write_text('{}')
+    today = dt.date(2030, 1, 1)
+    # 01:30 UTC is still yesterday in Newfoundland. Check local-day grouping.
+    timestamp = '2030-01-01T01:30:00.000Z'
+    for mode in ('known', 'unknown', 'mixed', 'partial-recorded'):
+        home = root / mode; home.mkdir()
+        claude = home / '.claude/projects/fixture'; claude.mkdir(parents=True)
+        codex = home / '.codex/sessions'; codex.mkdir(parents=True)
+        selected = [True, True] if mode == 'partial-recorded' else [False, True] if mode == 'mixed' else [mode == 'unknown']
+        for index, unknown in enumerate(selected):
+            token = 'fixture-' + str(index)
+            usage = {'input_tokens':1000, 'output_tokens':100, 'cache_creation_input_tokens':0, 'cache_read_input_tokens':0}
+            (claude / (token + '.jsonl')).write_text(json.dumps({'type':'assistant', 'timestamp':timestamp, 'requestId':token, 'sessionId':token,
+                'message':{'id':token, 'type':'message', 'role':'assistant', 'model':'synthetic-unknown-model' if unknown else 'claude-sonnet-4-5-20250929', 'usage':usage}}, separators=(',', ':'))+'\n')
+            if mode == 'partial-recorded' and index == 0:
+                logged = json.loads((claude / (token + '.jsonl')).read_text())
+                logged['costUSD'] = .1
+                (claude / (token + '.jsonl')).write_text(json.dumps(logged, separators=(',', ':'))+'\n')
+            codex_usage = {'input_tokens':1000, 'cached_input_tokens':0, 'output_tokens':100, 'reasoning_output_tokens':0, 'total_tokens':1100}
+            rows = [
+                {'timestamp':timestamp, 'type':'session_meta', 'payload':{'id':token, 'timestamp':timestamp, 'cwd':'/fixture'}},
+                {'timestamp':timestamp, 'type':'turn_context', 'payload':{'model':'synthetic-unknown-model' if unknown else 'gpt-5.4', 'cwd':'/fixture'}},
+                {'timestamp':timestamp, 'type':'event_msg', 'payload':{'type':'token_count', 'info':{'total_token_usage':codex_usage, 'last_token_usage':codex_usage}}}]
+            (codex / (token + '.jsonl')).write_text('\n'.join(json.dumps(row, separators=(',', ':')) for row in rows)+'\n')
+        env = {'PATH':'/usr/bin:/bin', 'HOME':str(home), 'CLAUDE_CONFIG_DIR':str(home / '.claude'), 'CODEX_HOME':str(home / '.codex'), 'TZ':'America/St_Johns'}
+        for provider in ('claude', 'codex'):
+            empty = root / (mode + '-' + provider); empty.mkdir()
+            with patch.dict(os.environ, env, clear=True):
+                record = c.run_collector(['/usr/bin/node', reader, 'daily', '--by-agent', '--since', '2029-12-03', '--until', '2030-01-01',
+                    '--json', '--offline', '--mode', 'calculate', '--config', str(config)], timeout=5, diagnostics=True,
+                    environment=c.cost_environment(provider, empty))
+            result = c.normalize_costs(record, provider, today)
+            assert result['state'] == ('fresh' if mode == 'known' else 'partial'), (provider, mode, result['state'])
+            assert list(result['daily']) == ['2029-12-31'], 'Reader must use the local calendar'
+            if mode == 'known': assert result['daily']['2029-12-31'] > 0
+            print(provider + ' ' + mode + ': passed')

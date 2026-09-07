@@ -10,7 +10,7 @@ import tempfile
 root = Path(__file__).resolve().parents[1]
 os.chdir(root)
 subprocess.run([sys.executable, '-B', '-m', 'unittest', 'discover', '-s', 'tests', '-p', 'test_*.py'], check=True)
-subprocess.run(['node', '--test', 'tests/pace.test.cjs', 'tests/costs.test.cjs'], check=True)
+subprocess.run(['/usr/bin/node', '--test', 'tests/pace.test.cjs', 'tests/costs.test.cjs', 'tests/wire.test.cjs'], check=True)
 subprocess.run(['omarchy', 'plugin', 'validate', str(root)], check=True)
 
 shell = Path(os.environ.get('OMARCHY_PATH', '/usr/share/omarchy')) / 'shell'
@@ -34,7 +34,7 @@ with tempfile.TemporaryDirectory(prefix='headroom-lint-') as temp:
     probe = subprocess.run(command + [str(control)], capture_output=True, text=True)
     if not unexpected(probe.stdout + probe.stderr):
         raise SystemExit('QML lint positive control failed')
-    result = subprocess.run(command + ['BarWidget.qml', 'Panel.qml', 'Service.qml', 'TintedIcon.qml'], capture_output=True, text=True)
+    result = subprocess.run(command + ['BarWidget.qml', 'Panel.qml', 'Service.qml', 'TintedIcon.qml', 'CollectorProcess.qml'], capture_output=True, text=True)
     findings = unexpected(result.stdout + result.stderr)
     if findings or result.returncode not in (0, 255):
         print(result.stdout + result.stderr)

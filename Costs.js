@@ -12,7 +12,8 @@ function dayKey(now, offset) {
 
 function amount(doc, index, period, now) {
   var p = doc && doc.providers[index]
-  if (!p || p.state !== "fresh" || now - doc.observedAt > 600000 || dayKey(doc.observedAt, 0) !== dayKey(now, 0)) return null
+  if (!p || p.state !== "fresh" || typeof doc.observedAt !== "number" || !isFinite(doc.observedAt)
+      || doc.observedAt <= 0 || doc.observedAt > now + 5000 || now - doc.observedAt > 600000 || dayKey(doc.observedAt, 0) !== dayKey(now, 0)) return null
   if (period < 2) return p.daily[dayKey(now, period === 0 ? 0 : -1)] || 0
   var sum = 0
   for (var i = 0; i < 30; i++) sum += p.daily[dayKey(now, -i)] || 0

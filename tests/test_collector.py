@@ -104,7 +104,9 @@ class CollectorTest(unittest.TestCase):
                 stub.write_text('#!/usr/bin/env python3\nimport os,subprocess,sys,time\nfrom pathlib import Path\np=subprocess.Popen([sys.executable,"-c","import time; time.sleep(30)"])\nPath(__file__+".pids").write_text(str(os.getpid())+" "+str(p.pid))\ntime.sleep(30)\n')
                 stub.chmod(0o755)
             env = dict(os.environ, PATH=directory + os.pathsep + os.environ['PATH'], XDG_CACHE_HOME=directory)
-            launcher = subprocess.Popen(['sh', '-c', 'python3 "$1" --parent "$$" & wait', 'headroom', str(path)],
+            runner = root / 'runner.py'
+            runner.write_text('import runpy,sys\nfrom pathlib import Path\nm=runpy.run_path(sys.argv[1])\nm["collect"].__globals__["COLLECTOR_DIR"]=Path(sys.argv[2])\nsys.argv=[sys.argv[1],"--parent",sys.argv[3]]\nm["main"]()\n')
+            launcher = subprocess.Popen(['/usr/bin/sh', '-c', '/usr/bin/python3 -I -S "$1" "$2" "$3" "$$" & wait', 'headroom', str(runner), str(path), directory],
                                         env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             tracked = []
             try:

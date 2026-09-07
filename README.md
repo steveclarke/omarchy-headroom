@@ -30,7 +30,7 @@ Synthetic values; the interface follows the active Omarchy theme.
 
 - Omarchy with the Quattro shell, native plugin services, and `omarchy-agent-usage-claude` / `omarchy-agent-usage-codex` collectors.
 - Python 3 and signed-in Claude Code / Codex CLIs.
-- Bun and Node.js for installing/running the pinned ccusage cost reader.
+- Bun and system Node.js (`/usr/bin/node`) for installing/running the pinned ccusage cost reader.
 - `qt6-5compat` for monochrome icon tinting.
 
 ## Install
@@ -59,11 +59,19 @@ omarchy plugin enable omarchy.agents
 Update with `omarchy plugin update io.github.steveclarke.headroom`, then rerun `bin/setup-costs` from the installed plugin directory to apply any pinned cost-reader update.
 If an update still shows the old behavior, run `omarchy restart shell` to clear the shell's compiled QML cache.
 
+Removing the plugin stops its workers and removes the plugin checkout. The separate `$XDG_DATA_HOME/headroom/ccusage-20.0.20` dependency directory remains, as do the provider CLIs, their credentials/history, and Omarchy's native usage caches. Headroom does not delete those shared files or restore the Agents widget automatically. Setup refuses redirected directories and never overwrites an existing version. If it reports a damaged installation, move that exact version directory aside and rerun setup; preserve it until the replacement works.
+
 ## Cost estimates
 
-[ccusage](https://github.com/ccusage/ccusage) 20.0.20 reads local Claude Code and Codex history. Headroom requests daily reports with bundled offline pricing, preserving recorded costs when available. It retains only daily USD totals, not project names or model/token details. Cost reading runs separately from quota collection. No usage history is uploaded. `bin/setup-costs` installs the locked reader under `$XDG_DATA_HOME/headroom/ccusage-20.0.20` (default `~/.local/share/headroom/ccusage-20.0.20`), outside the validated plugin folder.
+[ccusage](https://github.com/ccusage/ccusage) 20.0.20 reads local Claude Code and Codex history. Headroom calculates daily reports from bundled offline prices (`--mode calculate`), so all usage is estimated on the same pricing basis. Recorded cost fields are not used. It retains only daily USD totals, not project names or model/token details. Cost reading runs separately from quota collection. Each worker has an isolated temporary home and an explicit path to just one provider’s history. No usage history is uploaded. `bin/setup-costs` installs the locked reader under `$XDG_DATA_HOME/headroom/ccusage-20.0.20` (default `~/.local/share/headroom/ccusage-20.0.20`), outside the validated plugin folder.
 
-These are estimated API-equivalent usage values, **not subscription charges**. Coverage is this machine's available local history; it does not include sessions on other computers. Today and Yesterday use the local calendar; 30 Days includes today and the previous 29 days. Missing or incomplete pricing shows `—`, never an invented zero or a misleading combined total. Model mappings, deduplication and pricing accuracy depend on the pinned reader; prices can change.
+These are estimated API-equivalent usage values, **not subscription charges**. Coverage is this machine's available local history; it does not include sessions on other computers. Today and Yesterday use the local calendar; 30 Days includes today and the previous 29 days. A used model without positive cost evidence makes its provider incomplete and shows `—`; a combined total is shown only when both providers are complete. This conservative check also suppresses a genuinely free model with recorded activity. Model mappings, deduplication and pricing accuracy depend on the pinned reader; prices can change. Its Claude parser expects the compact JSONL emitted by the CLI and can ignore reformatted history; completeness checks cannot detect records that the reader itself skips.
+
+## Data access and network
+
+Headroom delegates quota authentication to the installed Omarchy collectors. Claude's collector reads its CLI credentials and contacts `https://api.anthropic.com/api/oauth/usage`. Codex's collector runs the signed-in local Codex app-server and requests subscription limits; the installed Codex CLI owns its OpenAI connections and authentication. Headroom does not receive, store, or print credential values. Native collector credential handling, HTTP behavior, and cache writes remain upstream responsibilities.
+
+The optional setup command downloads hash-locked packages from the npm registry through Bun, with lifecycle scripts disabled. Routine cost checks use offline pricing and local history. The cost worker creates an empty private temporary directory and removes it after collection or normal cancellation. Only normalized quota fields and daily money totals reach the shell; raw history and diagnostics are discarded. Helper output, runtime, strings, nesting, and model counts have explicit limits.
 
 ## Current limitations
 
@@ -78,13 +86,17 @@ These are estimated API-equivalent usage values, **not subscription charges**. C
 
 The shell creates one `Service.qml` for all monitors. It runs `bin/headroom-collect`; `Model.js` and `Pace.js` normalize display state and calculate forecasts. `Costs.js` selects local calendar periods from the separate cost worker. `BarWidget.qml` hosts the native `Panel.qml` lifecycle.
 
-Interface conventions are recorded in [DESIGN.md](DESIGN.md).
+Interface conventions are recorded in [DESIGN.md](DESIGN.md); contributor guidance is in [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md).
 
 Run the checks with Node.js, Python 3, Qt 6 qmllint and Omarchy installed:
 
 ```sh
 python3 bin/check
+python3 tests/check-qml
+python3 tests/check-reader ~/.local/share/headroom/ccusage-20.0.20/node_modules/.bin/ccusage
 ```
+
+The reader integration check uses only generated histories, offline mode, and temporary homes; adjust the reader path when using a custom `XDG_DATA_HOME`.
 
 For runtime checks on an installed plugin:
 

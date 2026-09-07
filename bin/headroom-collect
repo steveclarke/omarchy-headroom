@@ -15,12 +15,16 @@ from pathlib import Path
 import re
 import selectors
 import signal
+import stat
 import subprocess
 import sys
 import threading
+import tempfile
 import time
 
 MAX_OUTPUT = 4 * 1024 * 1024
+MAX_REPORT = 131072
+COLLECTOR_DIR = Path('/usr/share/omarchy/bin')
 TIMEOUT = 55
 ACTIVE = set()
 ACTIVE_LOCK = threading.Lock()
@@ -52,16 +56,18 @@ def watch_parent(parent):
     while os.getppid() == parent:
         time.sleep(.1)
     stop_children()
-    os._exit(143)
+    os.kill(os.getpid(), signal.SIGTERM)
 
 
-def run_collector(command, timeout=TIMEOUT, diagnostics=False):
+def run_collector(command, timeout=TIMEOUT, diagnostics=False, environment=None):
     """Bound runtime and output; terminate the collector's app-server subtree."""
     with ACTIVE_LOCK:
         if STOPPING.is_set():
             raise CollectionError("Usage check cancelled")
         try:
-            env = dict(os.environ, LOG_LEVEL="4", NO_COLOR="1") if diagnostics else None
+            env = dict(os.environ if environment is None else environment)
+            if diagnostics:
+                env.update(LOG_LEVEL="4", NO_COLOR="1")
             proc = subprocess.Popen(command, stdout=subprocess.PIPE,
                                     stderr=subprocess.PIPE if diagnostics else subprocess.DEVNULL,
                                     start_new_session=True, env=env)
@@ -88,15 +94,21 @@ def run_collector(command, timeout=TIMEOUT, diagnostics=False):
                     buffer.extend(chunk)
                     if len(buffer) > MAX_OUTPUT:
                         raise CollectionError("Collector output too large · update Omarchy")
-        try:
-            code = proc.wait(timeout=max(0.01, deadline - time.monotonic()))
-        except subprocess.TimeoutExpired as exc:
-            raise CollectionError("Usage check timed out · try refreshing") from exc
+        # Keep the leader unreaped until group teardown: its PID cannot be
+        # reused while the parent watcher still holds it in ACTIVE.
+        result = None
+        while result is None:
+            result = os.waitid(os.P_PID, proc.pid, os.WEXITED | os.WNOHANG | os.WNOWAIT)
+            if result is None:
+                if time.monotonic() >= deadline:
+                    raise CollectionError("Usage check timed out · try refreshing")
+                time.sleep(.01)
+        code = result.si_status if result.si_code == os.CLD_EXITED else -result.si_status
         if code != 0:
             raise CollectionError("Usage check failed · try refreshing")
         try:
             value = json.loads(output)
-        except (ValueError, UnicodeError) as exc:
+        except (ValueError, UnicodeError, RecursionError, OverflowError) as exc:
             raise CollectionError("Could not read usage · update Omarchy") from exc
         if not isinstance(value, dict):
             raise CollectionError("Could not read usage · update Omarchy")
@@ -104,20 +116,23 @@ def run_collector(command, timeout=TIMEOUT, diagnostics=False):
             value["_hasWarnings"] = bool(errors.strip())
         return value
     finally:
-        try:
-            os.killpg(proc.pid, signal.SIGKILL)
-        except ProcessLookupError:
-            pass
-        proc.wait()
+        with ACTIVE_LOCK:
+            try:
+                os.killpg(proc.pid, signal.SIGKILL)
+            except ProcessLookupError:
+                pass
+            ACTIVE.discard(proc.pid)
+            proc.wait()
         proc.stdout.close()
         if diagnostics:
             proc.stderr.close()
-        with ACTIVE_LOCK:
-            ACTIVE.discard(proc.pid)
 
 
 def numeric(value):
-    return isinstance(value, (int, float)) and not isinstance(value, bool) and math.isfinite(value)
+    try:
+        return isinstance(value, (int, float)) and not isinstance(value, bool) and math.isfinite(value)
+    except OverflowError:
+        return False
 
 
 def epoch(value):
@@ -139,7 +154,7 @@ def clean(value, limit=80):
 
 
 def normalize_window(entry, provider):
-    if not isinstance(entry, dict) or not numeric(entry.get("percent")) or entry["percent"] < 0:
+    if not isinstance(entry, dict) or not numeric(entry.get("percent")) or not 0 <= entry["percent"] <= 1e6:
         return None
     label = clean(entry.get("label"))
     title = clean(entry.get("title")) or label
@@ -171,15 +186,37 @@ def normalize_window(entry, provider):
 
 
 def read_probe_cache(path):
+    directory = fd = None
     try:
-        with path.open("rb") as stream:
+        # Walk with held descriptors, refusing redirected parents as well as
+        # the final symlink. Nonblocking open makes planted FIFOs harmless.
+        path = Path(path)
+        if not path.is_absolute() or '..' in path.parts:
+            return None
+        directory = os.open('/', os.O_RDONLY | os.O_DIRECTORY | os.O_CLOEXEC)
+        for part in path.parts[1:-1]:
+            next_dir = os.open(part, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW | os.O_CLOEXEC, dir_fd=directory)
+            os.close(directory)
+            directory = next_dir
+        fd = os.open(path.name, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK | os.O_CLOEXEC, dir_fd=directory)
+        info = os.fstat(fd)
+        if (not stat.S_ISREG(info.st_mode) or info.st_uid != os.geteuid()
+                or info.st_nlink != 1 or info.st_mode & 0o022 or info.st_size > MAX_OUTPUT):
+            return None
+        with os.fdopen(fd, 'rb') as stream:
+            fd = None
             raw = stream.read(MAX_OUTPUT + 1)
         if len(raw) > MAX_OUTPUT:
             return None
         doc = json.loads(raw)
         return doc if isinstance(doc, dict) else None
-    except (OSError, ValueError):
+    except (OSError, ValueError, RecursionError, OverflowError):
         return None
+    finally:
+        if fd is not None:
+            os.close(fd)
+        if directory is not None:
+            os.close(directory)
 
 
 def observation(record, provider, started, finished, cache_before=None, cache_after=None):
@@ -220,7 +257,13 @@ def collect(provider):
     before = read_probe_cache(cache) if provider == "claude" else None
     started = time.time() * 1000
     try:
-        record = run_collector(["omarchy-agent-usage-" + provider, "--limits-only"])
+        command = [str(COLLECTOR_DIR / ("omarchy-agent-usage-" + provider)), "--limits-only"]
+        # Native Claude's reuse window also treats a negative cache age as
+        # recent. Bypass it only to recover from a backward clock adjustment.
+        stamp = before.get("fetchedAtMs") if before else None
+        if provider == "claude" and numeric(stamp) and stamp > started + 5000:
+            command.append("--force")
+        record = run_collector(command)
         finished = time.time() * 1000
         after = read_probe_cache(cache) if provider == "claude" else None
         # Reading twice catches a concurrent cache replacement during matching.
@@ -233,7 +276,7 @@ def collect(provider):
 
 
 def normalize_costs(record, provider, today):
-    """Keep only daily money totals; never forward model or project details."""
+    """Unified reports expose per-model cost evidence for both providers."""
     rows = record.get("daily")
     if not isinstance(rows, list) or len(rows) > 366:
         raise CollectionError("Cost reader format changed · update Headroom")
@@ -244,35 +287,75 @@ def normalize_costs(record, provider, today):
         if not isinstance(row, dict):
             raise CollectionError("Cost reader returned invalid data")
         try:
-            date = dt.date.fromisoformat(row["date"])
+            date = dt.date.fromisoformat(row["period"])
         except (ValueError, TypeError, KeyError) as exc:
             raise CollectionError("Cost reader returned invalid dates") from exc
-        value = row.get("totalCost" if provider == "claude" else "costUSD")
-        if not numeric(value) or value < 0 or date.isoformat() in daily:
+        agents = row.get("agents")
+        if not isinstance(agents, list) or len(agents) != 1 or not isinstance(agents[0], dict) or agents[0].get("agent") != provider:
+            raise CollectionError("Cost reader returned unexpected providers")
+        agent = agents[0]
+        value = agent.get("totalCost")
+        if not numeric(value) or not 0 <= value <= 1e12 or date.isoformat() in daily:
             raise CollectionError("Cost reader returned invalid amounts")
-        if not start <= date <= today:
-            continue
-        if provider == "claude":
-            partial = partial or any(b.get("missingPricing", False) for b in row.get("modelBreakdowns", []) if isinstance(b, dict))
-        daily[date.isoformat()] = value
+        models = agent.get("modelBreakdowns")
+        tokens = agent.get("totalTokens")
+        if not isinstance(models, list) or len(models) > 200 or not numeric(tokens) or not 0 <= tokens <= 1e15:
+            raise CollectionError("Cost reader returned invalid model totals")
+        if tokens > 0 and not models:
+            partial = True
+        for model in models:
+            if not isinstance(model, dict):
+                raise CollectionError("Cost reader returned invalid models")
+            counts = [model.get(k) for k in ("inputTokens", "outputTokens", "cacheCreationTokens", "cacheReadTokens")]
+            if any(not numeric(n) or not 0 <= n <= 1e15 for n in counts):
+                raise CollectionError("Cost reader returned invalid token totals")
+            cost = model.get("cost")
+            if not numeric(cost) or not 0 <= cost <= 1e12:
+                raise CollectionError("Cost reader returned invalid model costs")
+            # Unknown models silently cost zero in this reader version. Even
+            # a genuinely free model is conservatively incomplete here.
+            if sum(counts) > 0 and cost <= 0:
+                partial = True
+        if start <= date <= today:
+            daily[date.isoformat()] = value
     return {"id": provider, "state": "partial" if partial else "fresh", "daily": daily,
             "message": "Incomplete pricing · update the cost reader" if partial else ""}
+
+
+def cost_environment(provider, empty_home):
+    # The unified CLI has no provider filter. Its discovery sees only an empty
+    # home plus this provider's explicit history roots; no other CLI overrides,
+    # Node preload hooks, credentials, or user config enter the worker.
+    home = Path.home()
+    env = {"PATH": "/usr/bin:/bin", "HOME": str(empty_home),
+           "XDG_CONFIG_HOME": str(empty_home), "XDG_DATA_HOME": str(empty_home),
+           "XDG_CACHE_HOME": str(empty_home), "USERPROFILE": str(empty_home)}
+    for key in ("TZ", "LANG", "LC_ALL"):
+        if key in os.environ:
+            env[key] = os.environ[key]
+    if provider == "claude":
+        config = Path(os.environ.get("XDG_CONFIG_HOME", str(home / ".config")))
+        env["CLAUDE_CONFIG_DIR"] = os.environ.get("CLAUDE_CONFIG_DIR", str(config / "claude") + "," + str(home / ".claude"))
+    else:
+        env["CODEX_HOME"] = os.environ.get("CODEX_HOME", str(home / ".codex"))
+    return env
 
 
 def collect_cost(provider):
     runtime = Path(__file__).resolve().parents[1] / "runtime"
     version = json.loads((runtime / "package.json").read_text())["dependencies"]["ccusage"]
     data_home = Path(os.environ.get("XDG_DATA_HOME", str(Path.home() / ".local/share")))
-    reader = data_home / "headroom" / ("ccusage-" + version) / "node_modules/.bin/ccusage"
+    reader = data_home / "headroom" / ("ccusage-" + version) / "node_modules/ccusage/src/cli.js"
     if not reader.exists():
         return {"id": provider, "state": "unavailable", "daily": {},
                 "message": "Cost reader missing · run bin/setup-costs"}
     try:
         today = dt.date.today()
-        record = run_collector([str(reader), provider, "daily", "--since",
-                                (today - dt.timedelta(days=29)).isoformat(), "--until", today.isoformat(),
-                                "--json", "--offline", "--mode", "auto", "--config", str(runtime / "config.json")],
-                               diagnostics=True)
+        with tempfile.TemporaryDirectory(prefix="headroom-cost-") as empty_home:
+            record = run_collector(["/usr/bin/node", str(reader), "daily", "--by-agent", "--since",
+                                    (today - dt.timedelta(days=29)).isoformat(), "--until", today.isoformat(),
+                                    "--json", "--offline", "--mode", "calculate", "--config", str(runtime / "config.json")],
+                                   diagnostics=True, environment=cost_environment(provider, empty_home))
         return normalize_costs(record, provider, today)
     except CollectionError:
         return {"id": provider, "state": "unavailable", "daily": {},
@@ -294,7 +377,10 @@ def main():
     observed = time.time() * 1000
     with concurrent.futures.ThreadPoolExecutor(max_workers=2) as pool:
         providers = list(pool.map(collect_cost if args.costs else collect, ("claude", "codex")))
-    print(json.dumps({"schema": 1, "providers": providers, "observedAt": observed}, allow_nan=False))
+    payload = json.dumps({"schema": 1, "providers": providers, "observedAt": observed}, allow_nan=False).encode("utf-8")
+    if len(payload) > MAX_REPORT:
+        raise SystemExit("Usage report exceeds its size limit")
+    sys.stdout.buffer.write(payload + b"\n")
 
 
 if __name__ == "__main__":

@@ -47,3 +47,9 @@ test('local calendar stepping survives a DST transition without dropping a day',
     else process.env.TZ = previous;
   }
 });
+
+test('future observations fail closed after a clock rollback', () => {
+  const now = new Date(2030, 0, 1, 10).getTime()
+  const doc = costs.demo(now + 7200000, 'normal')
+  assert.equal(costs.amount(doc, 0, 0, now), null)
+})
