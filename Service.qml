@@ -35,8 +35,9 @@ Item {
     if (["", "normal", "stale", "empty"].indexOf(mode) < 0) return
     if (collector.running) collector.running = false
     demoMode = mode
+    nowMs = Date.now()
     if (mode === "") { providers = [Model.empty("claude"), Model.empty("codex")]; lastAttemptAt = 0; refresh() }
-    else providers = Model.demo(Date.now(), mode)
+    else providers = Model.demo(nowMs, mode)
   }
 
   Component.onCompleted: startup.start()

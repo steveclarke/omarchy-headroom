@@ -15,7 +15,7 @@ Panel {
   readonly property double now: service ? service.nowMs : Date.now()
   readonly property var providers: service ? service.providers : [Model.empty("claude"), Model.empty("codex")]
   readonly property color foreground: bar ? bar.foreground : Color.foreground
-  readonly property color dim: Color.muted
+  readonly property color dim: Qt.rgba(foreground.r, foreground.g, foreground.b, 0.72)
   readonly property color urgent: bar ? bar.urgent : Color.urgent
   readonly property color caution: "#c49645"
   readonly property string fontFamily: bar ? bar.fontFamily : Style.font.family
@@ -100,7 +100,7 @@ Panel {
                   Row {
                     width: parent.width
                     Text { width: parent.width - percent.width; text: metric.modelData.title; elide: Text.ElideRight; textFormat: Text.PlainText; color: root.foreground; font.family: root.fontFamily; font.pixelSize: Style.font.bodySmall }
-                    Text { id: percent; text: Model.percentage(metric.modelData, root.now) + " left"; color: root.severity(metric.forecast); font.family: root.fontFamily; font.pixelSize: Style.font.bodySmall }
+                    Text { id: percent; text: Model.percentage(metric.modelData, root.now) === "—" ? "—" : Model.percentage(metric.modelData, root.now) + " left"; color: root.severity(metric.forecast); font.family: root.fontFamily; font.pixelSize: Style.font.bodySmall }
                   }
                   Item {
                     width: parent.width

@@ -4,6 +4,7 @@ from pathlib import Path
 import sys
 import tempfile
 import unittest
+import os
 
 path = Path(__file__).resolve().parents[1] / 'bin/headroom-collect'
 loader = importlib.machinery.SourceFileLoader('collector', str(path))
@@ -70,6 +71,17 @@ class CollectorTest(unittest.TestCase):
     def test_oversized_output_is_bounded(self):
         with self.assertRaisesRegex(c.CollectionError,'too large'):
             c.run_collector([sys.executable,'-c',f"print('x' * {c.MAX_OUTPUT + 1})"])
+
+    def test_timeout_stops_app_server_descendants(self):
+        with tempfile.TemporaryDirectory() as directory:
+            pid_file = Path(directory) / 'child.pid'
+            script = "import subprocess,sys,time; from pathlib import Path; p=subprocess.Popen([sys.executable,'-c','import time; time.sleep(20)']); Path(sys.argv[1]).write_text(str(p.pid)); time.sleep(20)"
+            with self.assertRaises(c.CollectionError):
+                c.run_collector([sys.executable,'-c',script,str(pid_file)],timeout=.3)
+            pid = int(pid_file.read_text())
+            stat = Path(f'/proc/{pid}/stat')
+            # A killed child can briefly remain a zombie until init reaps it.
+            self.assertTrue(not stat.exists() or stat.read_text().split()[2] == 'Z')
 
 
 if __name__ == '__main__':
