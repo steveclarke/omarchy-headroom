@@ -33,6 +33,7 @@ BarWidget {
   }
   implicitWidth: button.implicitWidth
   implicitHeight: button.implicitHeight
+  readonly property real openPanelIndicatorWidth: Math.round(chips.implicitWidth)
   onBarChanged: injectPanel()
   Loader {
     id: panelLoader
@@ -45,16 +46,24 @@ BarWidget {
     anchors.fill: parent
     bar: root.bar
     hasVisualContent: true
+    labelVisible: false
     fixedWidth: root.vertical ? -1 : chips.implicitWidth + Style.space(16)
     fixedHeight: root.vertical ? chips.implicitHeight + Style.space(12) : -1
     tooltipText: "Headroom · percentages remaining\nS: Session · W: Weekly\nClick for limits and forecasts · right-click to refresh"
+    Accessible.role: Accessible.Button
+    Accessible.name: "Headroom. " + root.providers.map(function(p) {
+      return p.name + ": session " + Model.percentage(Model.find(p, "session"), root.now)
+        + ", weekly " + Model.percentage(Model.find(p, "weekly"), root.now) + " remaining"
+    }).join(". ")
+    Accessible.onPressAction: root.toggle()
     onPressed: function(b) {
       if (b === Qt.LeftButton) root.toggle()
       else if (root.service) root.service.refresh()
     }
     Grid {
       id: chips
-      anchors.centerIn: parent
+      x: Math.round((parent.width - implicitWidth) / 2)
+      anchors.verticalCenter: parent.verticalCenter
       columns: root.vertical ? 1 : 2
       spacing: Style.space(12)
       Repeater {
@@ -62,8 +71,15 @@ BarWidget {
         Row {
           id: chip
           required property var modelData
-          spacing: Style.space(5)
-          opacity: Model.fresh(modelData, root.now) ? 1 : 0.65
+          required property int index
+          spacing: Style.space(6)
+          Rectangle {
+            visible: chip.index > 0 && !root.vertical
+            anchors.verticalCenter: parent.verticalCenter
+            width: Style.space(1)
+            height: Style.space(12)
+            color: Qt.rgba(button.foreground.r, button.foreground.g, button.foreground.b, 0.22)
+          }
           Image {
             anchors.verticalCenter: parent.verticalCenter
             source: Qt.resolvedUrl("assets/" + chip.modelData.id + (chip.modelData.id === "codex" && button.foreground.hslLightness < 0.5 ? "-light" : "") + ".svg")
@@ -72,18 +88,45 @@ BarWidget {
             sourceSize.width: width * 2
             sourceSize.height: height * 2
           }
-          Text {
-            text: "S " + Model.percentage(Model.find(chip.modelData, "session"), root.now)
-              + (root.vertical ? "\n" : "  ") + "W " + Model.percentage(Model.find(chip.modelData, "weekly"), root.now)
-            color: button.foreground
-            font.family: button.fontFamily
-            font.pixelSize: Style.font.bodySmall
+          Grid {
+            columns: root.vertical ? 1 : 2
+            spacing: Style.space(7)
+            Repeater {
+              model: ["session", "weekly"]
+              Row {
+                id: reading
+                required property string modelData
+                spacing: Style.space(3)
+                Text {
+                  text: reading.modelData === "session" ? "S" : "W"
+                  anchors.baseline: value.baseline
+                  color: button.foreground
+                  font.family: button.fontFamily
+                  font.pixelSize: Style.font.caption
+                }
+                Text {
+                  id: value
+                  width: Math.ceil(valueSize.width)
+                  text: Model.percentage(Model.find(chip.modelData, reading.modelData), root.now)
+                  horizontalAlignment: Text.AlignRight
+                  color: button.foreground
+                  font.family: button.fontFamily
+                  font.pixelSize: Style.font.bodySmall
+                  font.weight: Font.DemiBold
+                }
+                TextMetrics {
+                  id: valueSize
+                  text: "100%"
+                  font: value.font
+                }
+              }
+            }
           }
           Text {
             text: root.warning(chip.modelData)
-            visible: text !== ""
+            width: Style.font.iconSmall
             anchors.verticalCenter: parent.verticalCenter
-            color: root.bar ? root.bar.urgent : Color.urgent
+            color: text === "!" ? button.foreground : root.bar ? root.bar.urgent : Color.urgent
             font.family: button.fontFamily
             font.pixelSize: Style.font.iconSmall
           }
