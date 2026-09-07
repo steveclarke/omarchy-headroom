@@ -15,6 +15,7 @@ import re
 import selectors
 import signal
 import subprocess
+import sys
 import threading
 import time
 
@@ -22,6 +23,7 @@ MAX_OUTPUT = 4 * 1024 * 1024
 TIMEOUT = 55
 ACTIVE = set()
 ACTIVE_LOCK = threading.Lock()
+STOPPING = threading.Event()
 
 
 class CollectionError(Exception):
@@ -29,6 +31,7 @@ class CollectionError(Exception):
 
 
 def stop_children(*_):
+    STOPPING.set()
     with ACTIVE_LOCK:
         for pid in ACTIVE:
             try:
@@ -42,14 +45,25 @@ def terminate(signum, frame):
     raise SystemExit(128 + signum)
 
 
+def watch_parent(parent):
+    # The shell launcher can be SIGKILLed before delivering SIGTERM. This
+    # worker stays alive long enough to stop all isolated collector groups.
+    while os.getppid() == parent:
+        time.sleep(.1)
+    stop_children()
+    os._exit(143)
+
+
 def run_collector(command, timeout=TIMEOUT):
     """Bound runtime and output; terminate the collector's app-server subtree."""
-    try:
-        proc = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
-                                start_new_session=True)
-    except OSError as exc:
-        raise CollectionError("Collector unavailable · update Omarchy") from exc
     with ACTIVE_LOCK:
+        if STOPPING.is_set():
+            raise CollectionError("Usage check cancelled")
+        try:
+            proc = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
+                                    start_new_session=True)
+        except OSError as exc:
+            raise CollectionError("Collector unavailable · update Omarchy") from exc
         ACTIVE.add(proc.pid)
     output = bytearray()
     deadline = time.monotonic() + timeout
@@ -210,6 +224,11 @@ def collect(provider):
 def main():
     signal.signal(signal.SIGTERM, terminate)
     signal.signal(signal.SIGINT, terminate)
+    if len(sys.argv) == 3 and sys.argv[1] == "--parent":
+        parent = int(sys.argv[2])
+        if os.getppid() != parent:
+            return
+        threading.Thread(target=watch_parent, args=(parent,), daemon=True).start()
     with concurrent.futures.ThreadPoolExecutor(max_workers=2) as pool:
         providers = list(pool.map(collect, ("claude", "codex")))
     print(json.dumps({"schema": 1, "providers": providers}, allow_nan=False))

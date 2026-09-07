@@ -56,7 +56,10 @@ Item {
   }
   Process {
     id: collector
-    command: ["python3", Qt.resolvedUrl("bin/headroom-collect").toString().replace(/^file:\/\//, "")]
+    // Quickshell kills its direct child on destruction. Keep the collector
+    // separate so it can observe launcher death and stop its process groups.
+    command: ["sh", "-c", "python3 \"$1\" --parent \"$$\" & wait", "headroom",
+      Qt.resolvedUrl("bin/headroom-collect").toString().replace(/^file:\/\//, "")]
     stdout: StdioCollector { id: output; waitForEnd: true }
     stderr: StdioCollector { waitForEnd: true }
     onExited: function(exitCode) {

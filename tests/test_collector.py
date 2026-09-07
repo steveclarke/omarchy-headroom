@@ -5,6 +5,9 @@ import sys
 import tempfile
 import unittest
 import os
+import signal
+import subprocess
+import time
 
 path = Path(__file__).resolve().parents[1] / 'bin/headroom-collect'
 loader = importlib.machinery.SourceFileLoader('collector', str(path))
@@ -82,6 +85,44 @@ class CollectorTest(unittest.TestCase):
             stat = Path(f'/proc/{pid}/stat')
             # A killed child can briefly remain a zombie until init reaps it.
             self.assertTrue(not stat.exists() or stat.read_text().split()[2] == 'Z')
+
+    def test_launcher_kill_stops_collectors_and_grandchildren(self):
+        def alive(pid):
+            try:
+                return Path(f'/proc/{pid}/stat').read_text().rsplit(')', 1)[1].split()[0] != 'Z'
+            except FileNotFoundError:
+                return False
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            for provider in ('claude', 'codex'):
+                stub = root / ('omarchy-agent-usage-' + provider)
+                stub.write_text('#!/usr/bin/env python3\nimport os,subprocess,sys,time\nfrom pathlib import Path\np=subprocess.Popen([sys.executable,"-c","import time; time.sleep(30)"])\nPath(__file__+".pids").write_text(str(os.getpid())+" "+str(p.pid))\ntime.sleep(30)\n')
+                stub.chmod(0o755)
+            env = dict(os.environ, PATH=directory + os.pathsep + os.environ['PATH'], XDG_CACHE_HOME=directory)
+            launcher = subprocess.Popen(['sh', '-c', 'python3 "$1" --parent "$$" & wait', 'headroom', str(path)],
+                                        env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            tracked = []
+            try:
+                deadline = time.monotonic() + 5
+                while len(list(root.glob('*.pids'))) < 2 and time.monotonic() < deadline:
+                    time.sleep(.02)
+                files = list(root.glob('*.pids'))
+                tracked = [int(pid) for file in files for pid in file.read_text().split()]
+                self.assertEqual(len(tracked), 4, 'Both collectors and their children must start')
+                launcher.kill()
+                launcher.wait(timeout=2)
+                deadline = time.monotonic() + 3
+                while any(alive(pid) for pid in tracked) and time.monotonic() < deadline:
+                    time.sleep(.02)
+                self.assertFalse([pid for pid in tracked if alive(pid)])
+            finally:
+                if launcher.poll() is None:
+                    launcher.kill()
+                    launcher.wait(timeout=2)
+                for pid in tracked:
+                    if alive(pid):
+                        os.kill(pid, signal.SIGKILL)
 
 
 if __name__ == '__main__':
