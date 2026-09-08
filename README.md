@@ -7,7 +7,6 @@ Claude Code and Codex weekly percentages, local cost estimates, reset times, and
 ## What it shows
 
 - Weekly percentages **remaining** for both providers in the bar.
-- Hover the bar for weekly reset countdowns, remaining session and model allowances, and any capacity warnings. Costs stay in the full panel.
 - Session, weekly, and reported model-specific quota windows in the panel.
 - Estimated local usage value in USD for Today, Yesterday, and 30 Days, with a provider cost split.
 - Reset countdowns beneath thin quota meters.
