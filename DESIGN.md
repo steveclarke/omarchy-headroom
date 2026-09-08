@@ -24,7 +24,7 @@ Headroom follows the installed Omarchy shell. The panel is flat, with the native
 - Text uses `Style.font.family` and the shared body, bodySmall, title, heading and display sizes. Layout uses `Style.spacing` and `Style.space()`.
 - Content width is fitted from `Style.space(400)`, and height from the content with a `Style.space(1000)` cap. A vertical Flickable handles shorter screens.
 - Provider sections and the footer use `PanelSeparator`. Quotas sit directly on the panel, without separate cards. Major gaps use `Style.spacing.panelGap`.
-- Buttons, period choices and switches use `qs.Ui.Button` and `Toggle`. The shell owns their corners, hover, focus, selected and pressed styles. Settings and Refresh retain their native gear and refresh glyphs.
+- Buttons, period choices and switches use `qs.Ui.Button` and `ToggleSwitch`. The shell owns their corners, hover, focus, selected and pressed styles. Settings and Refresh retain their native gear and refresh glyphs.
 
 ## Colors and readability
 
@@ -61,9 +61,9 @@ The ring uses a 134-unit canvas with a 24-unit stroke. Its total is rounded to w
 
 ## Settings
 
-Settings replaces the detail content inside the same panel. Each provider has a native switch beside its name and a subordinate **Show weekly usage in top bar** switch. The first enables collection and the click-open details; the second controls the weekly bar summary. Disabling a provider stops its workers, disables the subordinate switch, and retains its top-bar choice for re-enabling. Existing display settings migrate without changing visibility.
+Settings uses one flat draggable row per item, with aligned **Enabled** and **Top bar** columns. Compact native ToggleSwitch controls have 44-unit click targets, explicit accessible names and keyboard focus. Cost has only Enabled; its top-bar cell is a dash. No nested toggle cards, per-provider status labels or preview content.
 
-All switches share one right edge. A grip on the left moves the whole provider group; provider headers on the main screen also support dragging. The dragged section follows the pointer, other sections dim, and an accent line marks the drop location. Release saves one order for the bar, quota sections and cost legend; Escape or dropping outside the list cancels. A focused grip supports Up/Down. The **Cost** switch controls costs and their workers. All changes save immediately across monitors; the actual bar updates while settings stays open. A rejected save retains the saved selection and shows an error.
+Enabled controls collection and panel visibility. Disabling a provider stops its workers, disables its top-bar switch, and retains the top-bar choice. One shared explanation describes this. Changes save immediately across monitors; a rejected save retains the existing state and shows an error. Grips preserve pointer and Up/Down reordering, with the insertion marker and cancellation behavior shared with the main panel.
 
 Tab walks settings controls, Space activates them, and Done or Escape returns to details while keeping changes. Reordering restores settings focus; other changes preserve the focused control. S opens settings. Outside settings, the shell owns Tab panel switching and Escape dismissal; R or activation refreshes, arrows scroll/select periods, and 1–3 select cost periods.
 
@@ -75,4 +75,4 @@ Use synthetic usage for captures. Check both light and dark palettes, missing an
 
 Cost has a draggable row in Settings and a grip beside its panel heading. Move it above, between, or below providers. Its position is retained when hidden; moving Cost does not change provider order in the bar.
 
-Cost periods fill one full-width row with equal-width choices. Settings separates each provider group with a divider; the indented Show in top bar option explains Weekly percentage remaining. Healthy providers have no Ready subtitle; status text is reserved for missing or stale data.
+Cost periods fill one full-width row with equal-width choices. Settings uses the compact two-column matrix described above.

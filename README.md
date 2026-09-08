@@ -65,10 +65,10 @@ Removing the plugin stops its workers and removes the plugin checkout. The separ
 
 The panel uses Omarchy's shared popup border, corner radius, font and control styles, so it follows your desktop theme.
 
-Click **Settings** in the panel, or press **S** while it is open. Each provider has two switches:
+Click **Settings** in the panel, or press **S** while it is open. Each provider occupies one draggable row with two columns:
 
-- The switch beside its name enables usage collection and the details shown when you click Headroom. Turning it off hides that provider and stops its quota and cost workers.
-- **Show weekly usage in top bar** adds its weekly percentage to the top bar. Turning this off keeps the provider in the details. The switch is disabled while the provider is off and remembers its choice when re-enabled.
+- **Enabled** enables usage collection and the details shown when you click Headroom. Turning it off hides that provider and stops its quota and cost workers.
+- **Top bar** adds its weekly percentage to the top bar. Turning this off keeps the provider in the details. The switch is disabled while the provider is off and remembers its choice when re-enabled.
 
 Both providers and their top-bar summaries default to on, with cost estimates enabled. Existing visibility choices are preserved when updating.
 

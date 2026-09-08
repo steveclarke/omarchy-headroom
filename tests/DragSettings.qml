@@ -88,6 +88,17 @@ Item {
       keyClick(Qt.Key_Up);wait(30)
       compare(Providers.panelOrder(host.preferences).join(","),"claude,cost,codex")
     }
+    function test_matrix_controls() {
+      var bar=findChild(view,"topbar-claude"), enabled=findChild(view,"enabled-claude")
+      bar.forceActiveFocus();keyClick(Qt.Key_Space);wait(30)
+      compare(host.preferences.providers.claude.display,"panel")
+      enabled.forceActiveFocus();keyClick(Qt.Key_Space);wait(30)
+      compare(host.preferences.providers.claude.display,"off");verify(!bar.enabled)
+      keyClick(Qt.Key_Space);wait(30)
+      compare(host.preferences.providers.claude.display,"panel");verify(bar.enabled)
+      mouseClick(bar,bar.width/2,bar.height/2);wait(30)
+      compare(host.preferences.providers.claude.display,"bar")
+    }
     function test_keyboard_reorders() {
       findChild(view,"reorder-codex").forceActiveFocus()
       keyClick(Qt.Key_Up);wait(30)

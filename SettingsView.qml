@@ -3,7 +3,6 @@ import qs.Commons
 import qs.Ui
 import qs.Ui as Ui
 import "Providers.js" as Providers
-import "Model.js" as Model
 
 Column {
   id: root
@@ -48,31 +47,46 @@ Column {
   function apply(value) {
     error = service && service.savePreferences(value) ? "" : "Could not save this change. Try again."
   }
-  function status(id) {
-    if (preferences.providers[id].display === "off") return ""
-    var p = Providers.find(service.providers, id)
-    return p ? (Model.fresh(p, service.nowMs) ? "" : Model.message(p, service.nowMs)) : "Waiting for usage"
-  }
   component Label: Text {
     textFormat: Text.PlainText
     color: root.ink
     font.family: Style.font.family
     font.pixelSize: Style.font.body
   }
-  component SwitchRow: Ui.Toggle {
-    foreground: root.ink
-    titleSize: Style.font.body
-    descriptionSize: Style.font.bodySmall
-    opacity: enabled ? 1 : 0.45
+  readonly property real controlWidth: Style.space(76)
+  component SwitchCell: MouseArea {
+    id: cell
+    property bool checked: false
+    required property string accessibleName
+    signal toggled()
+    width: root.controlWidth; height: Style.space(44)
+    hoverEnabled: true
+    activeFocusOnTab: true
+    cursorShape: Qt.PointingHandCursor
+    opacity: enabled ? 1 : 0.4
     Accessible.role: Accessible.CheckBox
-    Accessible.name: label
+    Accessible.name: accessibleName
     Accessible.checked: checked
+    Accessible.onToggleAction: cell.toggled()
+    onClicked: toggled()
+    Keys.onSpacePressed: toggled()
+    Keys.onReturnPressed: toggled()
+    ToggleSwitch {
+      anchors.centerIn: parent
+      checked: cell.checked
+      interactive: false
+      cursorRing: true
+      hasCursor: cell.containsMouse || cell.activeFocus
+      foreground: root.ink
+      trackHeight: Style.space(18)
+    }
   }
-  Column {
+  Label { text: "Settings"; font.pixelSize: Style.font.heading; font.weight: Font.DemiBold }
+  Row {
     width: parent.width
-    spacing: Style.spacing.labelGap
-    Label { text: "Settings"; font.pixelSize: Style.font.heading; font.weight: Font.DemiBold }
-    Label { width: parent.width; text: "Changes apply immediately."; color: root.dim; wrapMode: Text.WordWrap }
+    Item { width: parent.width - 2 * root.controlWidth; height: 1 }
+    Label { width: root.controlWidth; text: "Enabled"; horizontalAlignment: Text.AlignHCenter; color: root.dim; font.pixelSize: Style.font.bodySmall }
+    Label { width: root.controlWidth; text: "Top bar"; horizontalAlignment: Text.AlignHCenter; color: root.dim; font.pixelSize: Style.font.bodySmall }
   }
   Repeater {
     id: providerRepeater
@@ -80,60 +94,85 @@ Column {
     Item {
       id: providerRow
       required property string modelData
-      required property int index
       readonly property string providerId: modelData
-      z: orderDrag.dragged === providerRow && orderDrag.active ? 1 : 0
-      opacity: orderDrag.active && orderDrag.dragged !== providerRow ? 0.45 : 1
-      transform: Translate { y: orderDrag.dragged === providerRow ? orderDrag.offset : 0 }
       readonly property var meta: modelData === "cost" ? {name: "Cost"} : Providers.find(root.service.catalog, modelData)
       readonly property var preference: root.preferences.providers[modelData]
       width: root.width
-      height: providerLayout.implicitHeight
+      height: Style.space(48)
+      z: orderDrag.dragged === providerRow && orderDrag.active ? 1 : 0
+      opacity: orderDrag.active && orderDrag.dragged !== providerRow ? 0.45 : 1
+      transform: Translate { y: orderDrag.dragged === providerRow ? orderDrag.offset : 0 }
       Rectangle { anchors.fill: parent; color: Color.popups.background; visible: orderDrag.dragged === providerRow && orderDrag.active }
-      Column {
-        id: providerLayout
+      Row {
         width: parent.width
-        spacing: Style.spacing.md
-        PanelSeparator { visible: providerRow.index > 0; foreground: root.ink }
-        Row {
-          width: parent.width
-          spacing: Style.spacing.sm
+        anchors.verticalCenter: parent.verticalCenter
+        Item {
+          width: parent.width - 2 * root.controlWidth
+          height: Style.space(44)
           ProviderDragHandle {
             id: grip
             anchors.verticalCenter: parent.verticalCenter
             reorder: orderDrag; providerItem: providerRow; providerName: providerRow.meta.name
             ink: root.dim
           }
-          SwitchRow {
-            width: parent.width - grip.width - parent.spacing
-            label: providerRow.meta.name
-            description: providerRow.modelData === "cost" ? "Today, Yesterday and 30 Days" : root.status(providerRow.modelData)
-            checked: providerRow.modelData === "cost" ? root.preferences.showCosts : providerRow.preference.display !== "off"
-            Accessible.name: "Enable " + providerRow.meta.name
-            onClicked: providerRow.modelData === "cost" ? root.setCosts(!checked) : root.setProviderEnabled(providerRow.modelData, !checked)
+          Label {
+            anchors.left: grip.right; anchors.leftMargin: Style.spacing.sm
+            anchors.right: parent.right; anchors.rightMargin: Style.spacing.sm
+            anchors.verticalCenter: parent.verticalCenter
+            text: providerRow.meta.name
+            elide: Text.ElideRight
           }
         }
-        SwitchRow {
-          visible: providerRow.modelData !== "cost"
-          x: Style.space(44) + Style.spacing.sm
-          width: parent.width - x
-          label: "Show in top bar"
-          description: "Weekly percentage remaining"
-          checked: !!providerRow.preference && providerRow.preference.showInBar
-          enabled: !!providerRow.preference && providerRow.preference.display !== "off"
-          Accessible.name: providerRow.meta.name + ": " + label
-          onClicked: root.setShowInBar(providerRow.modelData, !checked)
+        SwitchCell {
+          objectName: "enabled-" + providerRow.providerId
+          accessibleName: "Enable " + providerRow.meta.name
+          checked: providerRow.modelData === "cost" ? root.preferences.showCosts : providerRow.preference.display !== "off"
+          onToggled: providerRow.modelData === "cost" ? root.setCosts(!checked) : root.setProviderEnabled(providerRow.modelData, !checked)
+        }
+        Item {
+          width: root.controlWidth; height: Style.space(44)
+          SwitchCell {
+            visible: providerRow.modelData !== "cost"
+            objectName: "topbar-" + providerRow.providerId
+            accessibleName: providerRow.meta.name + " in top bar"
+            checked: !!providerRow.preference && providerRow.preference.showInBar
+            enabled: !!providerRow.preference && providerRow.preference.display !== "off"
+            onToggled: root.setShowInBar(providerRow.modelData, !checked)
+          }
+          Label {
+            visible: providerRow.modelData === "cost"
+            anchors.centerIn: parent; text: "—"; color: root.dim
+          }
         }
       }
+      PanelSeparator { anchors.bottom: parent.bottom; foreground: root.ink }
     }
   }
-  PanelSeparator { foreground: root.ink }
+  Label {
+    width: parent.width
+    text: "Drag rows to reorder.\nTop bar shows weekly allowance remaining."
+    color: root.dim; font.pixelSize: Style.font.bodySmall; wrapMode: Text.WordWrap
+  }
+  Label {
+    width: parent.width
+    text: "Disabling a provider stops collection and hides it. Its top-bar choice is kept."
+    color: root.dim; font.pixelSize: Style.font.bodySmall; wrapMode: Text.WordWrap
+  }
   Label { width: parent.width; visible: root.error !== ""; text: root.error; wrapMode: Text.WordWrap }
-  Ui.Button {
-    anchors.right: parent.right
-    text: "Done"; foreground: root.ink; focusable: true; bordered: true
-    Accessible.role: Accessible.Button
-    Accessible.name: text
-    onClicked: root.done()
+  Row {
+    width: parent.width
+    Label {
+      width: parent.width - doneButton.width - Style.spacing.sm
+      anchors.verticalCenter: parent.verticalCenter
+      text: "Changes apply immediately."
+      color: root.dim; font.pixelSize: Style.font.bodySmall; wrapMode: Text.WordWrap
+    }
+    Ui.Button {
+      id: doneButton
+      text: "Done"; foreground: root.ink; focusable: true; bordered: true
+      Accessible.role: Accessible.Button
+      Accessible.name: text
+      onClicked: root.done()
+    }
   }
 }
