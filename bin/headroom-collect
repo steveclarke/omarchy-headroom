@@ -365,7 +365,7 @@ def collect_cost(provider):
         with tempfile.TemporaryDirectory(prefix="headroom-cost-") as empty_home:
             record = run_collector(["/usr/bin/node", str(reader), "daily", "--by-agent", "--since",
                                     (today - dt.timedelta(days=29)).isoformat(), "--until", today.isoformat(),
-                                    "--json", "--offline", "--mode", "calculate", "--config", str(runtime / "config.json")],
+                                    "--json", "--mode", "calculate", "--config", str(runtime / "config.json")],
                                    diagnostics=True, environment=cost_environment(provider, empty_home))
         return normalize_costs(record, provider, today)
     except CollectionError:
