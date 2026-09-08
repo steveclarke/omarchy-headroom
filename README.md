@@ -2,7 +2,7 @@
 
 Claude Code and Codex weekly percentages, local cost estimates, reset times, and usage forecasts for the Omarchy bar.
 
-**Early proof of concept.** Choose either or both providers, their order, and where each appears. Headroom uses Omarchy's installed quota collectors with a compact, rounded panel that follows the active theme.
+Choose either or both providers, their order, and where each appears. Headroom uses Omarchy's installed quota collectors and native panel styling that follows the active theme.
 
 ## What it shows
 
@@ -20,11 +20,7 @@ Forecasts use average consumption since the quota window began. They are estimat
 
 Synthetic values; the interface follows the active Omarchy theme.
 
-![Both providers visible together in the bar](screenshots/headroom-bar.png)
-
-| Light | Dark |
-| --- | --- |
-| ![Light panel with synthetic quota readings](screenshots/headroom-light.png) | ![Dark panel with synthetic quota readings](screenshots/headroom-dark.png) |
+![Headroom with synthetic Claude and Codex usage](preview.png)
 
 ## Requirements
 
@@ -94,7 +90,7 @@ These are estimated API-equivalent usage values, **not subscription charges**. C
 
 Headroom delegates quota authentication to the installed Omarchy collectors. Claude's collector reads its CLI credentials and contacts `https://api.anthropic.com/api/oauth/usage`. Codex's collector runs the signed-in local Codex app-server and requests subscription limits; the installed Codex CLI owns its OpenAI connections and authentication. Headroom does not receive, store, or print credential values. Native collector credential handling, HTTP behavior, and cache writes remain upstream responsibilities.
 
-The optional setup command downloads hash-locked packages from the npm registry through Bun, with lifecycle scripts disabled. Routine cost checks download public pricing catalogs and read local history; they do not upload usage. If pricing downloads fail, the reader can fall back to bundled prices. The cost worker creates an empty private temporary directory and removes it after collection or normal cancellation. Only normalized quota fields and daily money totals reach the shell; raw history and diagnostics are discarded. Helper output, runtime, strings, nesting, and model counts have explicit limits.
+The optional setup command downloads hash-locked packages from the npm registry through Bun, with lifecycle scripts disabled. Routine cost checks download public pricing catalogs from `https://raw.githubusercontent.com/BerriAI/litellm/main/model_prices_and_context_window.json` and, when needed, `https://models.dev/api.json`. They read local history and do not upload usage. If pricing downloads fail, the reader can fall back to bundled prices. The cost worker creates an empty private temporary directory and removes it after collection or normal cancellation. Only normalized quota fields and daily money totals reach the shell; raw history and diagnostics are discarded. Helper output, runtime, strings, nesting, and model counts have explicit limits.
 
 ## Current limitations
 
