@@ -31,7 +31,9 @@
         "Pace.js",
         "SettingsView.qml",
         "Providers.js",
-        "providers.json"
+        "providers.json",
+        "ProviderDragHandle.qml",
+        "ProviderReorder.qml"
       ],
       "measurementConvention": "Style.space(n) resolves native shell scaling; values are not a CSS pixel scale.",
       "previewSupport": "Native component metadata only. No HTML/CSS surrogate gallery or synthesized tonal ramps.",
@@ -159,7 +161,7 @@
         {
           "name": "Settings, Refresh and status footer",
           "source": "Panel.qml",
-          "description": "Native bordered buttons with gear and refresh glyphs beside text; status identifies refresh activity and synthetic data.",
+          "description": "Headroom and refresh status on two explicit lines beside native Settings and Refresh buttons.",
           "size": "Native qs.Ui.Button sizing",
           "states": [
             "native rest",
@@ -170,7 +172,7 @@
         {
           "name": "Provider settings",
           "source": "SettingsView.qml",
-          "description": "Native provider enable and top-bar switches, reorder arrows, cost toggle and Done. Saved preferences apply immediately; disabled providers retain the top-bar choice.",
+          "description": "Aligned native provider and top-bar switches, whole-section drag grips, cost toggle and Done. Drops and toggles save immediately; disabled providers retain the top-bar choice.",
           "states": [
             "enabled",
             "disabled provider and subordinate switch",

@@ -72,7 +72,7 @@ Click **Settings** in the panel, or press **S** while it is open. Each provider 
 
 Both providers and their top-bar summaries default to on, with cost estimates enabled. Existing visibility choices are preserved when updating.
 
-The arrows set the same provider order for the bar, quota groups and cost legend. **Show cost estimates** controls the whole cost section and its local-history workers. Quotas work without installing the optional cost reader. When there are no bar summaries, a compact **Headroom** entry keeps the panel and settings reachable.
+Drag a provider header on the main screen, or its grip in Settings, to move the whole provider section. Dropping saves the same order for the bar, quota groups and cost legend. A focused grip also supports Up/Down; Escape cancels a drag. **Show cost estimates** controls the whole cost section and its local-history workers. Quotas work without installing the optional cost reader. When there are no bar summaries, a compact **Headroom** entry keeps the panel and settings reachable.
 
 Changes apply and save automatically across all monitors through Omarchy's existing widget configuration. The bar updates while settings stays open. **Done** or Escape returns to the updated details panel and keeps your changes; closing the panel also keeps them. In settings, Tab moves between controls and Space activates them. A rejected change leaves the saved selection in place and shows an error. Outside settings, the native panel navigation and refresh keys remain available.
 
@@ -116,6 +116,7 @@ Run the checks with Node.js, Python 3, Qt 6 qmllint and Omarchy installed:
 ```sh
 python3 bin/check
 python3 tests/check-qml
+python3 tests/check-drag
 python3 tests/check-reader ~/.local/share/headroom/ccusage-20.0.20/node_modules/.bin/ccusage
 ```
 
@@ -137,6 +138,8 @@ omarchy-shell headroom preview stale
 omarchy-shell headroom preview empty
 omarchy-shell headroom preview ''
 ```
+
+`python3 tests/check-drag --desktop` also tests main-screen dragging in an isolated native panel with synthetic data; it briefly opens a window.
 
 Use synthetic fixtures and screenshots. Never commit credentials, account identifiers, local usage records, or machine configuration. Only fixed error categories are surfaced; raw collector output is not logged. The read-only status command reports provider preferences, state and window counts, not usage amounts.
 

@@ -15,6 +15,15 @@ Column {
   readonly property string orderKey: preferences.providerOrder.join(",")
   property string error: ""
   signal done()
+  onVisibleChanged: if (!visible) orderDrag.cancel()
+  onOrderKeyChanged: orderDrag.cancel()
+  ProviderReorder {
+    id: orderDrag
+    container: root; repeater: providerRepeater
+    onMoved: function(id, target, after) {
+      root.reorderProvider(id, target, after)
+    }
+  }
   spacing: Style.spacing.panelGap
   Keys.onEscapePressed: function(event) { root.done(); event.accepted = true }
 
@@ -31,13 +40,9 @@ Column {
     provider.display = value ? "bar" : "panel"
     apply(next)
   }
-  function reorder(id, direction) {
-    var next = JSON.parse(JSON.stringify(preferences)), index = next.providerOrder.indexOf(id), target = index + direction
-    if (target < 0 || target >= next.providerOrder.length) return
-    var other = next.providerOrder[target]
-    next.providerOrder[target] = id; next.providerOrder[index] = other
-    apply(next)
-    Qt.callLater(function() { root.forceActiveFocus() })
+  function reorderProvider(id, target, after) {
+    apply(Providers.reordered(preferences, id, target, after))
+    Qt.callLater(root.forceActiveFocus)
   }
   function setCosts(value) { apply(Object.assign({}, preferences, {showCosts: value})) }
   function apply(value) {
@@ -69,57 +74,52 @@ Column {
     Label { width: parent.width; text: "Changes apply immediately."; color: root.dim; wrapMode: Text.WordWrap }
   }
   Repeater {
+    id: providerRepeater
     model: root.orderKey ? root.orderKey.split(",") : []
-    Column {
+    Item {
       id: providerRow
       required property string modelData
       required property int index
+      readonly property string providerId: modelData
+      z: orderDrag.dragged === providerRow && orderDrag.active ? 1 : 0
+      opacity: orderDrag.active && orderDrag.dragged !== providerRow ? 0.45 : 1
+      transform: Translate { y: orderDrag.dragged === providerRow ? orderDrag.offset : 0 }
       readonly property var meta: Providers.find(root.service.catalog, modelData)
       readonly property var preference: root.preferences.providers[modelData]
       width: root.width
-      spacing: Style.spacing.sm
-      Row {
+      height: providerLayout.implicitHeight
+      Rectangle { anchors.fill: parent; color: Color.popups.background; visible: orderDrag.dragged === providerRow && orderDrag.active }
+      Column {
+        id: providerLayout
         width: parent.width
         spacing: Style.spacing.sm
-        TintedIcon {
-          width: Style.font.iconLarge; height: width
-          anchors.verticalCenter: parent.verticalCenter
-          iconSource: Qt.resolvedUrl("assets/" + providerRow.meta.icon)
-          ink: root.dim
+        Row {
+          width: parent.width
+          spacing: Style.spacing.sm
+          ProviderDragHandle {
+            id: grip
+            anchors.verticalCenter: parent.verticalCenter
+            reorder: orderDrag; providerItem: providerRow; providerName: providerRow.meta.name
+            ink: root.dim
+          }
+          SwitchRow {
+            width: parent.width - grip.width - parent.spacing
+            label: providerRow.meta.name
+            description: root.status(providerRow.modelData)
+            checked: providerRow.preference.display !== "off"
+            Accessible.name: "Enable " + providerRow.meta.name
+            onClicked: root.setProviderEnabled(providerRow.modelData, !checked)
+          }
         }
         SwitchRow {
-          width: parent.width - Style.font.iconLarge - up.width - down.width - parent.spacing * 3
-          label: providerRow.meta.name
-          description: root.status(providerRow.modelData)
-          checked: providerRow.preference.display !== "off"
-          Accessible.name: "Enable " + providerRow.meta.name
-          onClicked: root.setProviderEnabled(providerRow.modelData, !checked)
+          x: Style.space(24) + Style.spacing.sm
+          width: parent.width - x
+          label: "Show weekly usage in top bar"
+          checked: providerRow.preference.showInBar
+          enabled: providerRow.preference.display !== "off"
+          Accessible.name: providerRow.meta.name + ": " + label
+          onClicked: root.setShowInBar(providerRow.modelData, !checked)
         }
-        PanelActionButton {
-          id: up
-          anchors.verticalCenter: parent.verticalCenter
-          size: Style.space(24); iconText: ""; foreground: root.ink
-          focusable: true; enabled: providerRow.index > 0
-          Accessible.name: "Move " + providerRow.meta.name + " up"
-          onClicked: root.reorder(providerRow.modelData, -1)
-        }
-        PanelActionButton {
-          id: down
-          anchors.verticalCenter: parent.verticalCenter
-          size: Style.space(24); iconText: ""; foreground: root.ink
-          focusable: true; enabled: providerRow.index < root.preferences.providerOrder.length - 1
-          Accessible.name: "Move " + providerRow.meta.name + " down"
-          onClicked: root.reorder(providerRow.modelData, 1)
-        }
-      }
-      SwitchRow {
-        x: Style.font.iconLarge + Style.spacing.sm
-        width: parent.width - x
-        label: "Show weekly usage in top bar"
-        checked: providerRow.preference.showInBar
-        enabled: providerRow.preference.display !== "off"
-        Accessible.name: providerRow.meta.name + ": " + label
-        onClicked: root.setShowInBar(providerRow.modelData, !checked)
       }
     }
   }

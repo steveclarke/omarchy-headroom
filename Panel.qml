@@ -29,11 +29,21 @@ Panel {
   readonly property color caution: surface.hslLightness > 0.5 ? "#c49a16" : "#edc35b"
   readonly property color cautionIcon: surface.hslLightness > 0.5 ? "#916900" : caution
   property bool settingsOpen: false
+  property string orderError: ""
+  ProviderReorder {
+    id: detailDrag
+    container: content; repeater: providerRepeater
+    onMoved: function(id, target, after) {
+      root.orderError = root.service && root.service.savePreferences(Providers.reordered(root.service.preferences, id, target, after))
+        ? "" : "Could not save this order. Try again."
+      Qt.callLater(keys.forceActiveFocus)
+    }
+  }
   readonly property var costProviders: service ? service.costIds.map(function(id) { return Providers.find(root.service.catalog, id) }) : []
   readonly property var costAmounts: costProviders.map(function(p) { return Costs.amount(root.costs, p.id, root.period, root.now) })
-  function showSettings() { if (service) { settingsOpen = true; scroll.contentY = 0; settingsView.begin() } }
+  function showSettings() { if (service) { settingsOpen = true; detailDrag.cancel(); scroll.contentY = 0; settingsView.begin() } }
   function hideSettings() { settingsOpen = false; scroll.contentY = 0; keys.forceActiveFocus() }
-  onOpenedChanged: if (!opened) settingsOpen = false
+  onOpenedChanged: if (!opened) { settingsOpen = false; detailDrag.cancel(); orderError = "" }
   readonly property var costTotal: Costs.total(costs, period, now)
   readonly property string costMessage: Costs.message(costs, now)
   function mix(a, b, amount) {
@@ -76,7 +86,7 @@ Panel {
     contentHeight: panel.fittedContentHeight(content.implicitHeight, Style.space(1000))
     PanelKeyCatcher {
       id: keys
-      blocked: root.settingsOpen
+      blocked: root.settingsOpen || detailDrag.active || detailDrag.keyboardFocus
       anchors.fill: parent
       onCloseRequested: root.close()
       onTabRequested: function(direction) { if (root.bar) root.bar.switchPanelFrom(root.hostWidget || root, direction) }
@@ -96,6 +106,7 @@ Panel {
         contentHeight: content.implicitHeight
         clip: true
         boundsBehavior: Flickable.StopAtBounds
+        interactive: !detailDrag.active
         ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
         Column {
           id: content
@@ -260,163 +271,195 @@ Panel {
             }
           }
           Repeater {
+            id: providerRepeater
             model: root.settingsOpen ? [] : root.providers
-            Column {
+            Item {
               id: providerGroup
               required property var modelData
               required property int index
+              readonly property string providerId: modelData.id
+              z: detailDrag.dragged === providerGroup && detailDrag.active ? 1 : 0
+              opacity: detailDrag.active && detailDrag.dragged !== providerGroup ? 0.45 : 1
+              transform: Translate { y: detailDrag.dragged === providerGroup ? detailDrag.offset : 0 }
               width: content.width
-              spacing: Style.spacing.panelGap
-              PanelSeparator { visible: providerGroup.index > 0 || root.costProviders.length > 0; foreground: root.foreground }
-              Row {
+              height: providerLayout.implicitHeight
+              Rectangle { anchors.fill: parent; color: root.surface; visible: detailDrag.dragged === providerGroup && detailDrag.active }
+              Column {
+                id: providerLayout
                 width: parent.width
-                spacing: Style.space(7)
-                TintedIcon {
-                  id: providerIcon
-                  iconSource: Qt.resolvedUrl("assets/" + providerGroup.modelData.icon); ink: root.dim
-                  width: Style.space(21); height: width
-                  anchors.verticalCenter: parent.verticalCenter
-                }
-                Label {
-                  id: providerName
-                  text: providerGroup.modelData.shortName
-                  font.pixelSize: Style.font.heading; font.weight: Font.DemiBold
-                  anchors.verticalCenter: parent.verticalCenter
-                }
-                Label {
-                  width: Math.max(0, parent.width - providerName.width - providerIcon.width - Style.space(21))
-                  text: providerGroup.modelData.plan
-                  elide: Text.ElideRight
-                  anchors.baseline: providerName.baseline
-                  color: root.dim; font.pixelSize: Style.font.body
-                }
-              }
-              Item {
-                width: parent.width
-                height: quotas.implicitHeight
-                Column {
-                  id: quotas
+                spacing: Style.spacing.panelGap
+                PanelSeparator { visible: providerGroup.index > 0 || root.costProviders.length > 0; foreground: root.foreground }
+                Item {
                   width: parent.width
-                  spacing: Style.spacing.panelGap
-                  Label {
-                    width: parent.width
-                    text: Model.message(providerGroup.modelData, root.now)
-                    visible: text !== ""
-                    wrapMode: Text.WordWrap
-                    color: root.dim; font.pixelSize: Style.font.bodySmall
+                  height: providerHeader.implicitHeight
+                  Row {
+                    id: providerHeader
+                    x: Style.space(28)
+                    width: parent.width - x
+                    spacing: Style.space(7)
+                    TintedIcon {
+                      id: providerIcon
+                      iconSource: Qt.resolvedUrl("assets/" + providerGroup.modelData.icon); ink: root.dim
+                      width: Style.space(21); height: width
+                      anchors.verticalCenter: parent.verticalCenter
+                    }
+                    Label {
+                      id: providerName
+                      text: providerGroup.modelData.shortName
+                      font.pixelSize: Style.font.heading; font.weight: Font.DemiBold
+                      anchors.verticalCenter: parent.verticalCenter
+                    }
+                    Label {
+                      width: Math.max(0, parent.width - providerName.width - providerIcon.width - Style.space(21))
+                      text: providerGroup.modelData.plan
+                      elide: Text.ElideRight
+                      anchors.baseline: providerName.baseline
+                      color: root.dim; font.pixelSize: Style.font.body
+                    }
                   }
-                  Repeater {
-                    model: providerGroup.modelData.windows
-                    Column {
-                      id: metric
-                      required property var modelData
-                      width: quotas.width
-                      spacing: Style.space(5)
-                      readonly property var forecast: Pace.evaluate(modelData, providerGroup.modelData.observedAt, root.now, Model.fresh(providerGroup.modelData, root.now))
-                      readonly property string remaining: Model.percentage(modelData, root.now)
-                      readonly property bool flame: forecast !== null && (forecast.status === "urgent" || forecast.status === "exhausted")
-                      readonly property var paceMarker: Pace.marker(forecast)
-                      Accessible.role: Accessible.ProgressBar
-                      Accessible.name: modelData.title + ": " + remaining + " remaining. " + (flame && Pace.summary(forecast, root.now) === "" ? "Will reach limit" : Pace.summary(forecast, root.now))
-                      Item {
-                        width: parent.width
-                        height: Math.max(quotaTitle.height, warning.implicitHeight)
-                        Label {
-                          id: quotaTitle
-                          width: parent.width - (warning.visible ? warning.width + Style.space(10) : 0)
-                          text: metric.modelData.title === "Fable Weekly" ? "Fable" : metric.modelData.title
-                          elide: Text.ElideRight
-                          font.pixelSize: Style.font.title; font.weight: Font.DemiBold
-                        }
+                  ProviderDragHandle {
+                    objectName: "reorder-main-" + providerGroup.providerId
+                    width: parent.width; height: parent.height
+                    reorder: detailDrag; providerItem: providerGroup; providerName: providerGroup.modelData.shortName
+                    ink: root.dim
+                  }
+                }
+                Item {
+                  width: parent.width
+                  height: quotas.implicitHeight
+                  Column {
+                    id: quotas
+                    width: parent.width
+                    spacing: Style.spacing.panelGap
+                    Label {
+                      width: parent.width
+                      text: Model.message(providerGroup.modelData, root.now)
+                      visible: text !== ""
+                      wrapMode: Text.WordWrap
+                      color: root.dim; font.pixelSize: Style.font.bodySmall
+                    }
+                    Repeater {
+                      model: providerGroup.modelData.windows
+                      Column {
+                        id: metric
+                        required property var modelData
+                        width: quotas.width
+                        spacing: Style.space(5)
+                        readonly property var forecast: Pace.evaluate(modelData, providerGroup.modelData.observedAt, root.now, Model.fresh(providerGroup.modelData, root.now))
+                        readonly property string remaining: Model.percentage(modelData, root.now)
+                        readonly property bool flame: forecast !== null && (forecast.status === "urgent" || forecast.status === "exhausted")
+                        readonly property var paceMarker: Pace.marker(forecast)
+                        Accessible.role: Accessible.ProgressBar
+                        Accessible.name: modelData.title + ": " + remaining + " remaining. " + (flame && Pace.summary(forecast, root.now) === "" ? "Will reach limit" : Pace.summary(forecast, root.now))
                         Item {
-                          id: warning
-                          anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter
-                          implicitWidth: warningContents.implicitWidth
-                          implicitHeight: warningContents.implicitHeight
-                          visible: metric.flame || warningText.text !== ""
-                          Row {
-                            id: warningContents
-                            spacing: Style.space(4)
-                            Label {
-                              visible: metric.flame || (metric.forecast !== null && metric.forecast.status === "caution")
-                              text: metric.flame ? "󰈸" : "󰔟"
-                              color: metric.flame ? root.urgent : root.cautionIcon
-                              font.family: Style.font.family
-                              font.pixelSize: Style.font.heading
-                              anchors.verticalCenter: parent.verticalCenter
+                          width: parent.width
+                          height: Math.max(quotaTitle.height, warning.implicitHeight)
+                          Label {
+                            id: quotaTitle
+                            width: parent.width - (warning.visible ? warning.width + Style.space(10) : 0)
+                            text: metric.modelData.title === "Fable Weekly" ? "Fable" : metric.modelData.title
+                            elide: Text.ElideRight
+                            font.pixelSize: Style.font.title; font.weight: Font.DemiBold
+                          }
+                          Item {
+                            id: warning
+                            anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter
+                            implicitWidth: warningContents.implicitWidth
+                            implicitHeight: warningContents.implicitHeight
+                            visible: metric.flame || warningText.text !== ""
+                            Row {
+                              id: warningContents
+                              spacing: Style.space(4)
+                              Label {
+                                visible: metric.flame || (metric.forecast !== null && metric.forecast.status === "caution")
+                                text: metric.flame ? "󰈸" : "󰔟"
+                                color: metric.flame ? root.urgent : root.cautionIcon
+                                font.family: Style.font.family
+                                font.pixelSize: Style.font.heading
+                                anchors.verticalCenter: parent.verticalCenter
+                              }
+                              Label {
+                                id: warningText
+                                visible: text !== ""
+                                text: Pace.summary(metric.forecast, root.now)
+                                color: root.dim; font.pixelSize: Style.font.bodySmall
+                                anchors.verticalCenter: parent.verticalCenter
+                              }
                             }
-                            Label {
-                              id: warningText
-                              visible: text !== ""
-                              text: Pace.summary(metric.forecast, root.now)
-                              color: root.dim; font.pixelSize: Style.font.bodySmall
-                              anchors.verticalCenter: parent.verticalCenter
+                            MouseArea {
+                              anchors.fill: parent; hoverEnabled: true
+                              onEntered: if (root.bar) root.bar.showTooltip(this, Pace.tooltip(metric.forecast))
+                              onExited: if (root.bar) root.bar.hideTooltip(this)
                             }
                           }
+                        }
+                        Rectangle {
+                          width: parent.width; height: Style.space(6); radius: Math.min(Style.cornerRadius, height / 2)
+                          color: root.track
+                          Rectangle {
+                            width: metric.remaining === "—" ? 0 : parent.width * Math.max(0, Math.min(1, 1 - metric.modelData.used))
+                            height: parent.height; radius: parent.radius
+                            color: root.meterColor(Pace.severity(metric.modelData, metric.forecast, root.now, Model.fresh(providerGroup.modelData, root.now)))
+                            opacity: Model.fresh(providerGroup.modelData, root.now) ? 1 : 0.4
+                          }
+                          Rectangle {
+                            visible: metric.paceMarker !== null
+                            x: Math.max(0, Math.min(parent.width - width, parent.width * (1 - (metric.paceMarker || 0)) - width / 2))
+                            anchors.verticalCenter: parent.verticalCenter
+                            width: Style.space(2); height: parent.height + Style.space(4); radius: Style.space(1)
+                            color: root.mix(root.foreground, root.group, 0.45)
+                          }
                           MouseArea {
-                            anchors.fill: parent; hoverEnabled: true
-                            onEntered: if (root.bar) root.bar.showTooltip(this, Pace.tooltip(metric.forecast))
+                            anchors.fill: parent; anchors.margins: -Style.space(3)
+                            hoverEnabled: true
+                            onEntered: if (root.bar && metric.forecast) root.bar.showTooltip(this, Pace.tooltip(metric.forecast))
                             onExited: if (root.bar) root.bar.hideTooltip(this)
                           }
                         }
-                      }
-                      Rectangle {
-                        width: parent.width; height: Style.space(6); radius: Math.min(Style.cornerRadius, height / 2)
-                        color: root.track
-                        Rectangle {
-                          width: metric.remaining === "—" ? 0 : parent.width * Math.max(0, Math.min(1, 1 - metric.modelData.used))
-                          height: parent.height; radius: parent.radius
-                          color: root.meterColor(Pace.severity(metric.modelData, metric.forecast, root.now, Model.fresh(providerGroup.modelData, root.now)))
-                          opacity: Model.fresh(providerGroup.modelData, root.now) ? 1 : 0.4
-                        }
-                        Rectangle {
-                          visible: metric.paceMarker !== null
-                          x: Math.max(0, Math.min(parent.width - width, parent.width * (1 - (metric.paceMarker || 0)) - width / 2))
-                          anchors.verticalCenter: parent.verticalCenter
-                          width: Style.space(2); height: parent.height + Style.space(4); radius: Style.space(1)
-                          color: root.mix(root.foreground, root.group, 0.45)
-                        }
-                        MouseArea {
-                          anchors.fill: parent; anchors.margins: -Style.space(3)
-                          hoverEnabled: true
-                          onEntered: if (root.bar && metric.forecast) root.bar.showTooltip(this, Pace.tooltip(metric.forecast))
-                          onExited: if (root.bar) root.bar.hideTooltip(this)
-                        }
-                      }
-                      Item {
-                        width: parent.width
-                        height: Math.max(remainingText.height, resetText.height)
-                        Label {
-                          id: remainingText
-                          text: metric.remaining + (metric.remaining === "—" ? "" : " left")
-                        }
-                        Label {
-                          id: resetText
-                          anchors.right: parent.right
-                          width: parent.width - remainingText.width - Style.space(10)
-                          horizontalAlignment: Text.AlignRight
-                          text: metric.modelData.resetAt > root.now ? "Resets in " + Pace.duration(metric.modelData.resetAt - root.now) : metric.modelData.resetAt > 0 ? "Awaiting reset update" : "Reset not reported"
-                          wrapMode: Text.WordWrap
-                          color: root.dim; font.pixelSize: Style.font.body
+                        Item {
+                          width: parent.width
+                          height: Math.max(remainingText.height, resetText.height)
+                          Label {
+                            id: remainingText
+                            text: metric.remaining + (metric.remaining === "—" ? "" : " left")
+                          }
+                          Label {
+                            id: resetText
+                            anchors.right: parent.right
+                            width: parent.width - remainingText.width - Style.space(10)
+                            horizontalAlignment: Text.AlignRight
+                            text: metric.modelData.resetAt > root.now ? "Resets in " + Pace.duration(metric.modelData.resetAt - root.now) : metric.modelData.resetAt > 0 ? "Awaiting reset update" : "Reset not reported"
+                            wrapMode: Text.WordWrap
+                            color: root.dim; font.pixelSize: Style.font.body
+                          }
                         }
                       }
                     }
                   }
                 }
               }
-            }
+          }
+          }
+          Label {
+            visible: !root.settingsOpen && root.orderError !== ""
+            width: parent.width; text: root.orderError; wrapMode: Text.WordWrap
           }
           PanelSeparator { visible: !root.settingsOpen; foreground: root.foreground }
           Row {
             visible: !root.settingsOpen
             width: parent.width
             spacing: Style.space(6)
-            Label {
+            Column {
               width: parent.width - refreshButton.width - settingsButton.width - Style.space(12)
               anchors.verticalCenter: parent.verticalCenter
-              text: root.service && root.service.demoMode !== "" ? "Headroom · sample data" : root.service && (root.service.refreshing || root.service.costsRefreshing) ? "Updating usage…" : "Headroom · updates every 5 min"
-              color: root.dim; font.pixelSize: Style.font.bodySmall
-              wrapMode: Text.WordWrap
+              spacing: Style.spacing.xs
+              Label { text: "Headroom"; font.pixelSize: Style.font.bodySmall; color: root.dim }
+              Label {
+                width: parent.width
+                text: root.service && root.service.demoMode !== "" ? "Sample data" : root.service && (root.service.refreshing || root.service.costsRefreshing) ? "Updating usage…" : "Refreshes every 5 min"
+                color: root.dim; font.pixelSize: Style.font.bodySmall
+                elide: Text.ElideRight
+              }
             }
             Ui.Button {
               id: settingsButton

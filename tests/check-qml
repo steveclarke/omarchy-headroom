@@ -82,7 +82,7 @@ Timer {interval:1700;running:true;onTriggered:{require(s.providers.map(p=>p.id).
 
  # Settings uses native controls with a synthetic shared persistence service.
  # No real shell is launched, configuration written, or provider called.
- for name in ('SettingsView.qml', 'TintedIcon.qml'):
+ for name in ('SettingsView.qml', 'TintedIcon.qml', 'ProviderReorder.qml', 'ProviderDragHandle.qml'):
   shutil.copyfile(source/name, root/name)
  shutil.copytree(source/'assets', root/'assets')
  namespace=root/'qs'; namespace.mkdir()
@@ -109,13 +109,13 @@ Timer {interval:1700;running:true;onTriggered:{require(s.providers.map(p=>p.id).
  first.begin();first.setProviderEnabled("claude",true);require(first.preferences.providers.claude.display==="panel","enable-restores-bar-choice");
  first.setShowInBar("claude",true);first.setProviderEnabled("claude",false);first.setProviderEnabled("claude",true);
  require(second.preferences.providers.claude.display==="bar","enable-restores-visible-choice");''',
- 'settings-immediate':'''first.setShowInBar("claude",false);first.setCosts(false);first.reorder("codex",-1);
+ 'settings-immediate':'''first.setShowInBar("claude",false);first.setCosts(false);first.reorderProvider("codex","claude",false);
  require(host.saves===3,"saved-on-change");require(second.preferences.providers.claude.display==="panel" && !second.preferences.showCosts && second.preferences.providerOrder[0]==="codex","shared-view");
  var saves=host.saves;first.done();first.begin();require(host.saves===saves && !first.preferences.showCosts,"done-keeps-changes");''',
- 'settings-rejection':'''host.reject=true;first.setProviderEnabled("claude",false);first.setCosts(false);first.reorder("codex",-1);
+ 'settings-rejection':'''host.reject=true;first.setProviderEnabled("claude",false);first.setCosts(false);first.reorderProvider("codex","claude",false);
  require(host.saves===0 && first.error!=="","save-error");require(first.preferences.providers.claude.display==="bar" && first.preferences.showCosts && first.preferences.providerOrder[0]==="claude","saved-values-retained");
  host.reject=false;first.setProviderEnabled("claude",false);require(first.error==="" && second.preferences.providers.claude.display==="off","retry");''',
- 'settings-concurrent':'''second.setCosts(false);second.reorder("codex",-1);first.setProviderEnabled("claude",false);
+ 'settings-concurrent':'''second.setCosts(false);second.reorderProvider("codex","claude",false);first.setProviderEnabled("claude",false);
  require(!host.preferences.showCosts && host.preferences.providerOrder[0]==="codex" && host.preferences.providers.claude.display==="off","other-view-changes-preserved");'''
  }
  for mode,actions in cases.items():

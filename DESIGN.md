@@ -63,9 +63,11 @@ The ring uses a 134-unit canvas with a 24-unit stroke. Its total is rounded to w
 
 Settings replaces the detail content inside the same panel. Each provider has a native switch beside its name and a subordinate **Show weekly usage in top bar** switch. The first enables collection and the click-open details; the second controls the weekly bar summary. Disabling a provider stops its workers, disables the subordinate switch, and retains its top-bar choice for re-enabling. Existing display settings migrate without changing visibility.
 
-Reorder arrows apply one order to the bar, quota sections and cost legend. A native **Show cost estimates** switch controls costs and their workers. All changes save immediately across monitors; the actual bar updates while settings stays open. A rejected save retains the saved selection and shows an error.
+All switches share one right edge. A grip on the left moves the whole provider group; provider headers on the main screen also support dragging. The dragged section follows the pointer, other sections dim, and an accent line marks the drop location. Release saves one order for the bar, quota sections and cost legend; Escape or dropping outside the list cancels. A focused grip supports Up/Down. A native **Show cost estimates** switch controls costs and their workers. All changes save immediately across monitors; the actual bar updates while settings stays open. A rejected save retains the saved selection and shows an error.
 
 Tab walks settings controls, Space activates them, and Done or Escape returns to details while keeping changes. Reordering restores settings focus; other changes preserve the focused control. S opens settings. Outside settings, the shell owns Tab panel switching and Escape dismissal; R or activation refreshes, arrows scroll/select periods, and 1–3 select cost periods.
+
+The footer has two explicit lines: Headroom, then Refreshes every 5 min (or Updating usage / Sample data). Both use the shared small body font and the second line never wraps. Settings and Refresh sit beside them.
 
 ## Verification
 

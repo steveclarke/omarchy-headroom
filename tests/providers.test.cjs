@@ -58,3 +58,14 @@ test('legacy visibility migrates and disabled providers retain their top-bar cho
   assert.equal(api.normalize(catalog, plain(saved)).providers.claude.showInBar, false);
   assert.deepEqual(plain(api.selected(catalog, saved, false, false)), ['codex']);
 });
+
+test('drag moves an ID without swapping other providers or changing preferences', () => {
+  const initial={providerOrder:['a','hidden','b','c'],providers:{a:{display:'panel'},hidden:{display:'off'}},showCosts:false};
+  const next=plain(api.reordered(initial,'a','c',true));
+  assert.deepEqual(next.providerOrder,['hidden','b','c','a']);
+  assert.deepEqual(next.providers,initial.providers);
+  assert.equal(next.showCosts,false);
+  assert.deepEqual(plain(api.reordered(next,'a','b',false)).providerOrder,['hidden','a','b','c']);
+  assert.deepEqual(plain(api.reordered(initial,'unknown','a',false)),initial);
+  assert.deepEqual(initial.providerOrder,['a','hidden','b','c']);
+});

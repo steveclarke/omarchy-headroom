@@ -56,3 +56,12 @@ function selected(items, preferences, barOnly, costsOnly) {
 function mergedEntry(existing, preferences) {
   return Object.assign({}, existing, preferences)
 }
+
+// Move relative to an ID so refreshes and hidden providers cannot change the target.
+function reordered(preferences, id, targetId, after) {
+  var next = JSON.parse(JSON.stringify(preferences)), order = next.providerOrder
+  if (id === targetId || order.indexOf(id) < 0 || order.indexOf(targetId) < 0) return next
+  order.splice(order.indexOf(id), 1)
+  order.splice(order.indexOf(targetId) + (after ? 1 : 0), 0, id)
+  return next
+}
