@@ -449,6 +449,7 @@ Panel {
             PillButton {
               id: settingsButton
               text: "Settings"
+              iconText: "󰒓"
               ink: root.foreground; surface: root.group; hotSurface: root.track
               enabled: root.service !== null
               onClicked: root.showSettings()
@@ -456,7 +457,7 @@ Panel {
             PillButton {
               id: refreshButton
               text: "Refresh"
-              width: Style.space(76)
+              iconText: "󰑐"
               ink: root.foreground; surface: root.group; hotSurface: root.track
               enabled: root.service !== null && root.providers.length > 0 && !root.service.refreshing && !root.service.costsRefreshing
               Accessible.name: "Refresh usage"

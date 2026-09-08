@@ -115,7 +115,7 @@ Settings replaces the detail content inside the same native panel. Provider grou
 
 ### Native panel controls
 
-Refresh is a compact pill using the group color at rest and track color on hover; its text dims while disabled. The footer reports updating status or the normal refresh cadence and identifies sample data when enabled. `R` and native keyboard activation refresh; up/down moves through scrollable content. Escape dismisses and Tab uses the shell's panel-switching behavior through `PanelKeyCatcher`.
+Settings and Refresh are compact pills with native gear and refresh glyphs beside their labels. Icons use the native font at `Style.space(14)` with a `Style.space(6)` gap; each button sizes to its contents and retains a text accessible name. Pills use the group color at rest and track color on hover; both icon and text dim while disabled. The footer reports updating status or the normal refresh cadence and identifies sample data when enabled. `R` and native keyboard activation refresh; up/down moves through scrollable content. Escape dismisses and Tab uses the shell's panel-switching behavior through `PanelKeyCatcher`.
 
 ## Do's and Don'ts
 

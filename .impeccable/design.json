@@ -93,7 +93,7 @@
         {
           "name": "Settings, Refresh and status footer",
           "source": "Panel.qml",
-          "description": "Text status beside Settings and Refresh pill actions; status identifies refresh activity and synthetic previews.",
+          "description": "Text status beside Settings and Refresh pill actions with native 14-unit gear and refresh glyphs, a 6-unit icon gap and text accessible names. Status identifies refresh activity and synthetic previews.",
           "size": "PillButton: minimum Style.space(64) wide by Style.space(30) high",
           "states": ["rest: group background", "hover: track background", "disabled: dim text"]
         },
