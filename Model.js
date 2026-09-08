@@ -1,5 +1,5 @@
-function empty(id) {
-  return {id: id, name: id === "claude" ? "Claude Code" : "Codex", plan: "", state: "loading", message: "Checking usage…", observedAt: 0, windows: []}
+function empty(id, name) {
+  return {id: id, name: name || id, plan: "", state: "loading", message: "Checking usage…", observedAt: 0, windows: []}
 }
 
 function fresh(provider, now) {

@@ -2,7 +2,7 @@
 function number(value, max) { return typeof value === "number" && isFinite(value) && value >= 0 && value <= max }
 function text(value, max) { return typeof value === "string" && value.length <= max && !/[\u0000-\u001f\u007f-\u009f\u202a-\u202e\u2066-\u2069]/.test(value) }
 function object(value) { return value !== null && typeof value === "object" && !Array.isArray(value) }
-function parse(raw, costs) {
+function parse(raw, costs, expectedIds) {
   if (raw.length > 131072) throw new Error("size")
   // Bound nesting before JSON.parse, ignoring braces inside quoted strings.
   var depth = 0, quoted = false, escaped = false
@@ -18,9 +18,12 @@ function parse(raw, costs) {
   }
   var doc = JSON.parse(raw)
   if (!object(doc) || doc.schema !== 1 || !number(doc.observedAt, 8640000000000000)
-      || !Array.isArray(doc.providers) || doc.providers.length !== 2) throw new Error("report")
-  doc.providers.forEach(function(p, index) {
-    if (!object(p) || p.id !== (index ? "codex" : "claude") || !text(p.message, 160)) throw new Error("provider")
+      || !Array.isArray(expectedIds) || expectedIds.length > 20
+      || !Array.isArray(doc.providers) || doc.providers.length !== expectedIds.length) throw new Error("report")
+  var seen = []
+  doc.providers.forEach(function(p) {
+    if (!object(p) || expectedIds.indexOf(p.id) < 0 || seen.indexOf(p.id) >= 0 || !text(p.message, 160)) throw new Error("provider")
+    seen.push(p.id)
     if (costs) {
       if (["fresh", "partial", "unavailable"].indexOf(p.state) < 0 || !object(p.daily)) throw new Error("cost")
       var days = Object.keys(p.daily)

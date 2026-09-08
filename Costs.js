@@ -1,5 +1,5 @@
-function empty() {
-  return {observedAt: 0, providers: ["claude", "codex"].map(function(id) {
+function empty(ids) {
+  return {observedAt: 0, providers: (ids || []).map(function(id) {
     return {id: id, state: "loading", daily: {}, message: "Reading local usage…"}
   })}
 }
@@ -10,8 +10,8 @@ function dayKey(now, offset) {
   return d.getFullYear() + "-" + ("0" + (d.getMonth() + 1)).slice(-2) + "-" + ("0" + d.getDate()).slice(-2)
 }
 
-function amount(doc, index, period, now) {
-  var p = doc && doc.providers[index]
+function amount(doc, id, period, now) {
+  var p = doc && doc.providers.filter(function(p) { return p.id === id })[0]
   if (!p || (p.state !== "fresh" && p.state !== "partial") || typeof doc.observedAt !== "number" || !isFinite(doc.observedAt)
       || doc.observedAt <= 0 || doc.observedAt > now + 5000 || now - doc.observedAt > 600000 || dayKey(doc.observedAt, 0) !== dayKey(now, 0)) return null
   if (period < 2) return p.daily[dayKey(now, period === 0 ? 0 : -1)] || 0
@@ -21,8 +21,14 @@ function amount(doc, index, period, now) {
 }
 
 function total(doc, period, now) {
-  var a = amount(doc, 0, period, now), b = amount(doc, 1, period, now)
-  return a === null || b === null ? null : a + b
+  if (!doc || !doc.providers.length) return null
+  var sum = 0
+  for (var i = 0; i < doc.providers.length; i++) {
+    var value = amount(doc, doc.providers[i].id, period, now)
+    if (value === null) return null
+    sum += value
+  }
+  return sum
 }
 
 function message(doc, now) {
@@ -31,13 +37,13 @@ function message(doc, now) {
     var p = doc.providers[i]
     if (p.state !== "fresh" && p.state !== "partial") return p.message || "Costs unavailable · refresh to retry"
   }
-  if (amount(doc, 0, 0, now) === null) return "Costs outdated · refresh to update"
+  if (total(doc, 0, now) === null) return "Costs outdated · refresh to update"
   if (doc.providers.some(function(p) { return p.state === "partial" })) return "Partial estimate · some usage may be missing"
   return "Estimated local usage · USD"
 }
 
 function demo(now, mode) {
-  var doc = empty()
+  var doc = empty(["claude", "codex"])
   doc.observedAt = now
   doc.providers.forEach(function(p, i) {
     p.state = mode === "empty" ? "unavailable" : mode === "stale" ? "stale" : "fresh"

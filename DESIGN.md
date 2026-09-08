@@ -59,7 +59,7 @@ Panel labels use Qt's `sans-serif` family. Normal and `Font.DemiBold` weights cr
 | Quota title | `Style.space(16)` | DemiBold; window names |
 | Body | `Style.space(14)` | Normal; remaining allowance and legend labels |
 | Compact label | `Style.space(13)` | Periods, plans, resets, and exact costs; selected period is DemiBold |
-| Supporting text | `Style.space(11)`–`Style.space(12)` | Units, status, forecasts, and Refresh; only Refresh uses DemiBold |
+| Supporting text | `Style.space(11)`–`Style.space(12)` | Units, status, forecasts, and Refresh; pill actions use DemiBold |
 
 Bar percentages inherit the native `WidgetButton` font family and `Style.font.body` size, with normal weight and native text rendering. Provider marks use `Style.bar.iconCanvas`; warning glyphs use `Style.bar.iconFont` in the same icon canvas. These shared values honor the shell font and bar-size settings. Percentages are right-aligned in a width measured from `100%`. The ring total and legend amounts can shrink to fit. Plan names and quota titles elide; status and reset text can wrap. Forecast warnings stay on the title line, with the title yielding space to the warning.
 
@@ -69,9 +69,9 @@ The popup is one column. `KeyboardPanel` requests content width `Style.space(400
 
 Major sections are separated by `Style.space(22)`. Cost content has `Style.space(14)` insets; provider groups have `Style.space(16)` insets and `Style.space(22)` between quota rows. These are component measurements, not a new global spacing scale.
 
-The cost group places the three-period selector above a ring and an aligned provider legend. Each provider heading sits outside its inset quota group. Inside a quota row, the order is title with any warning right-aligned alongside it, meter, then remaining percentage on the left with reset on the right. There is no forecast row beneath those figures. The footer pairs update status with Refresh.
+The cost group places the three-period selector above a ring and an aligned provider legend. Each provider heading sits outside its inset quota group. Inside a quota row, the order is title with any warning right-aligned alongside it, meter, then remaining percentage on the left with reset on the right. There is no forecast row beneath those figures. The footer pairs update status with Settings and Refresh.
 
-The bar shows two provider summaries horizontally with space between them and no divider. On a vertical bar they stack. Both providers remain visible in either orientation.
+The bar shows the chosen provider summaries horizontally with space between them and no divider. On a vertical bar they stack. When none are chosen for the bar, a native-sized Headroom label keeps the panel reachable.
 
 ## Elevation & Depth
 
@@ -108,6 +108,10 @@ A monochrome provider mark, heading, and subdued plan label introduce each group
 Healthy forecasts with at least 10% projected spare have no visible note or marker. Hovering the meter reveals the projection. A smaller buffer that rounds to at least 1% shows a yellow meter and an amber hourglass beside a normal-weight secondary `~N% spare` note on the title line. A buffer that rounds to zero, or projected exhaustion before reset, shows a red meter and flame; a meaningful exhaustion estimate accompanies the flame. A displayed zero remaining shows `Limit reached`. Warning icons use the native Nerd Font library at `Style.space(16)`, vertically centered alongside the supporting text with a `Style.space(4)` gap. Warning text stays secondary and normal weight. Forecast tooltips explain the average-use basis.
 
 Very early readings below 5% usage suppress extrapolated alarms. Without a usable projection, fresh readings use absolute rounded-usage bands: yellow at 80% used and red at 90%, without a pacing note or marker. Missing or expired percentages use an em dash and an empty meter. Stale unexpired readings retain their numbers with reduced fill opacity (0.4), an explicit status, and no forecast.
+
+### Provider settings
+
+Settings replaces the detail content inside the same native panel. Provider groups retain the quiet inset surfaces, with name and reorder arrows above three pills: Bar + panel, Panel only, and Off. A native toggle controls cost estimates. Cancel and Save apply to the whole draft. Off stops collection; Panel only keeps collection running. Provider order also controls the cost legend. Tab walks settings controls; Escape discards the draft and returns to details. S opens settings from the detail panel.
 
 ### Native panel controls
 

@@ -2,11 +2,11 @@
 
 Claude Code and Codex weekly percentages, local cost estimates, reset times, and usage forecasts for the Omarchy bar.
 
-**Early proof of concept.** Both providers stay visible in the bar and in one compact panel. Headroom uses Omarchy's installed quota collectors with a compact, rounded panel that follows the active theme.
+**Early proof of concept.** Choose either or both providers, their order, and where each appears. Headroom uses Omarchy's installed quota collectors with a compact, rounded panel that follows the active theme.
 
 ## What it shows
 
-- Weekly percentages **remaining** for both providers in the bar.
+- Weekly percentages **remaining** for your chosen providers in the bar.
 - Session, weekly, and reported model-specific quota windows in the panel.
 - Estimated local usage value in USD for Today, Yesterday, and 30 Days, with a provider cost split.
 - Reset countdowns beneath thin quota meters.
@@ -28,9 +28,9 @@ Synthetic values; the interface follows the active Omarchy theme.
 
 ## Requirements
 
-- Omarchy with the Quattro shell, native plugin services, and `omarchy-agent-usage-claude` / `omarchy-agent-usage-codex` collectors.
-- Python 3 and signed-in Claude Code / Codex CLIs.
-- Bun and system Node.js (`/usr/bin/node`) for installing/running the pinned ccusage cost reader.
+- Omarchy with the Quattro shell and native plugin services. Tested with package `omarchy 4.0.2-1`; this is a tested baseline, not a guaranteed minimum version.
+- Python 3, the core usage collector, and a signed-in CLI for each enabled provider: `omarchy-agent-usage-claude` / Claude Code or `omarchy-agent-usage-codex` / Codex.
+- For optional costs: Bun installs the pinned ccusage reader; system Node.js (`/usr/bin/node`) runs it.
 - `qt6-5compat` for monochrome icon tinting.
 
 ## Install
@@ -43,7 +43,7 @@ omarchy-shell headroom refresh
 
 Click the bar summary to open the panel. Right-click or middle-click refreshes; R or Enter refreshes inside the panel, and Escape closes it. Left/right arrows or 1/2/3 select the cost period. Usage refreshes every five minutes. Repeated refresh requests within twenty seconds are coalesced.
 
-Once satisfied with Headroom, disable the built-in Agents display to avoid two independent refresh loops:
+Headroom works with the built-in Agents display disabled. Its collectors are core Omarchy commands; the Agents widget does not need to run. To avoid two independent refresh loops:
 
 ```sh
 omarchy plugin disable omarchy.agents
@@ -60,6 +60,28 @@ Update with `omarchy plugin update io.github.steveclarke.headroom`, then rerun `
 If an update still shows the old behavior, run `omarchy restart shell` to clear the shell's compiled QML cache.
 
 Removing the plugin stops its workers and removes the plugin checkout. The separate `$XDG_DATA_HOME/headroom/ccusage-20.0.20` dependency directory remains, as do the provider CLIs, their credentials/history, and Omarchy's native usage caches. Headroom does not delete those shared files or restore the Agents widget automatically. Setup refuses redirected directories and never overwrites an existing version. If it reports a damaged installation, move that exact version directory aside and rerun setup; preserve it until the replacement works.
+
+## Settings
+
+Click **Settings** in the panel, or press **S** while it is open. Claude and Codex both default to Bar + panel, with cost estimates enabled.
+
+| Choice | Behavior |
+| --- | --- |
+| Bar + panel | Show the weekly percentage in the bar and full details in the panel. |
+| Panel only | Collect usage and show details when you click Headroom. |
+| Off | Hide the provider and stop Headroom's quota and cost collection for it. |
+
+The arrows set the same provider order for the bar, quota groups and cost legend. **Show cost estimates** controls the whole cost section and its local-history workers. Quotas work without installing the optional cost reader. When there are no bar summaries, a compact **Headroom** entry keeps the panel and settings reachable.
+
+Save applies choices across all monitors through Omarchy's existing widget configuration. Cancel or Escape discards the draft. In settings, Tab moves between controls and Space activates them; Escape returns to details. Outside settings, the native panel navigation and refresh keys remain available.
+
+To check the runtime and selected collector commands without reading accounts or contacting providers:
+
+```sh
+python3 ~/.config/omarchy/plugins/io.github.steveclarke.headroom/bin/headroom-collect --check-dependencies --providers claude codex
+```
+
+List only the providers you use. Missing required files produce a nonzero exit status; Node and the cost reader are reported as optional. This checks availability, not login validity or future collector schema compatibility. Login failures and unsupported collector formats appear on the affected provider's card.
 
 ## Cost estimates
 
@@ -84,7 +106,7 @@ The optional setup command downloads hash-locked packages from the npm registry 
 
 ## Development
 
-The shell creates one `Service.qml` for all monitors. It runs `bin/headroom-collect`; `Model.js` and `Pace.js` normalize display state and calculate forecasts. `Costs.js` selects local calendar periods from the separate cost worker. `BarWidget.qml` hosts the native `Panel.qml` lifecycle.
+The bundled `providers.json` registry defines provider identity, collector names and display capabilities. `Providers.js` validates preferences and orders enabled IDs. The shell creates one `Service.qml` for all monitors. It runs `bin/headroom-collect`; `Model.js` and `Pace.js` normalize display state and calculate forecasts. `Costs.js` selects local calendar periods from the separate cost worker. `BarWidget.qml` hosts the native `Panel.qml` lifecycle.
 
 Interface conventions are recorded in [DESIGN.md](DESIGN.md); contributor guidance is in [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md).
 
@@ -115,7 +137,7 @@ omarchy-shell headroom preview empty
 omarchy-shell headroom preview ''
 ```
 
-Use synthetic fixtures and screenshots. Never commit credentials, account identifiers, local usage records, or machine configuration. Only fixed error categories are surfaced; raw collector output is not logged. The read-only status command reports state and window counts, not usage amounts.
+Use synthetic fixtures and screenshots. Never commit credentials, account identifiers, local usage records, or machine configuration. Only fixed error categories are surfaced; raw collector output is not logged. The read-only status command reports provider preferences, state and window counts, not usage amounts.
 
 ## License
 

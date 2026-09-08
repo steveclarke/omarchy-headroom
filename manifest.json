@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "io.github.steveclarke.headroom",
   "name": "Headroom",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "author": "Steve Clarke",
   "license": "MIT",
   "description": "Weekly capacity, local cost estimates, and usage forecasts for Claude Code and Codex.",

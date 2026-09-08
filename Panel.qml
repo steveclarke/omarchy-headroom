@@ -6,6 +6,7 @@ import qs.Ui
 import "Model.js" as Model
 import "Pace.js" as Pace
 import "Costs.js" as Costs
+import "Providers.js" as Providers
 
 Panel {
   id: root
@@ -15,8 +16,8 @@ Panel {
   property var hostWidget: null
   readonly property var service: bar && bar.shell ? bar.shell.serviceFor(moduleName) : null
   readonly property double now: service ? service.nowMs : Date.now()
-  readonly property var providers: service ? service.providers : [Model.empty("claude"), Model.empty("codex")]
-  readonly property var costs: service ? service.costs : Costs.empty()
+  readonly property var providers: service ? service.providers : []
+  readonly property var costs: service ? service.costs : Costs.empty([])
   readonly property int period: service ? service.costPeriod : 0
   readonly property color surface: Color.popups.background.hslLightness > 0.5 ? mix(Color.popups.background, "white", 0.68) : Color.popups.background
   readonly property color foreground: Color.popups.text
@@ -26,9 +27,12 @@ Panel {
   readonly property color urgent: legible(Color.urgent, group)
   readonly property color caution: surface.hslLightness > 0.5 ? "#c49a16" : "#edc35b"
   readonly property color cautionIcon: surface.hslLightness > 0.5 ? "#916900" : caution
-  readonly property color claudeColor: "#d77b5f"
-  readonly property color codexColor: "#279b80"
-  readonly property var costAmounts: [Costs.amount(costs, 0, period, now), Costs.amount(costs, 1, period, now)]
+  property bool settingsOpen: false
+  readonly property var costProviders: service ? service.costIds.map(function(id) { return Providers.find(root.service.catalog, id) }) : []
+  readonly property var costAmounts: costProviders.map(function(p) { return Costs.amount(root.costs, p.id, root.period, root.now) })
+  function showSettings() { if (service) { settingsOpen = true; scroll.contentY = 0; settingsView.begin() } }
+  function hideSettings() { settingsOpen = false; scroll.contentY = 0; keys.forceActiveFocus() }
+  onOpenedChanged: if (!opened) settingsOpen = false
   readonly property var costTotal: Costs.total(costs, period, now)
   readonly property string costMessage: Costs.message(costs, now)
   function mix(a, b, amount) {
@@ -66,7 +70,7 @@ Panel {
     bar: root.bar
     owner: root.hostWidget || root
     open: root.opened
-    focusTarget: keys
+    focusTarget: root.settingsOpen ? settingsView : keys
     padding: Style.space(18)
     borderSpec: Border.none()
     contentWidth: panel.fittedContentWidth(Style.space(400))
@@ -76,6 +80,7 @@ Panel {
     readonly property var cardSurface: keys.parent && keys.parent.parent && "radius" in keys.parent.parent ? keys.parent.parent : null
     PanelKeyCatcher {
       id: keys
+      blocked: root.settingsOpen
       Binding { target: panel.cardSurface; property: "radius"; value: Style.space(18); when: panel.cardSurface !== null }
       Binding { target: panel.cardSurface; property: "color"; value: root.surface; when: panel.cardSurface !== null }
       anchors.fill: parent
@@ -83,6 +88,7 @@ Panel {
       onTabRequested: function(direction) { if (root.bar) root.bar.switchPanelFrom(root.hostWidget || root, direction) }
       onTextKey: function(t) {
         if (t.toLowerCase() === "r") root.refresh()
+        if (t.toLowerCase() === "s") root.showSettings()
         if (["1", "2", "3"].indexOf(t) >= 0) root.selectPeriod(Number(t) - 1)
       }
       onActivateRequested: root.refresh()
@@ -101,7 +107,23 @@ Panel {
           id: content
           width: scroll.width
           spacing: Style.space(22)
+          SettingsView {
+            id: settingsView
+            visible: root.settingsOpen
+            width: parent.width
+            service: root.service
+            ink: root.foreground; dim: root.dim; surface: root.surface; group: root.group; track: root.track
+            onAccepted: root.hideSettings()
+            onCancelled: root.hideSettings()
+          }
+          Label {
+            visible: !root.settingsOpen && !root.providers.length
+            width: parent.width
+            text: !root.service || !root.service.catalog.length ? "Headroom is unavailable. Check its installation." : "No providers enabled. Choose providers in Settings."
+            wrapMode: Text.WordWrap
+          }
           Column {
+            visible: !root.settingsOpen && root.costProviders.length > 0
             width: parent.width
             spacing: Style.space(10)
             Row {
@@ -150,7 +172,7 @@ Panel {
                       model: ["Today", "Yesterday", "30 Days"]
                       AbstractButton {
                         id: periodButton
-                        required property string modelData
+                        required property var modelData
                         required property int index
                         width: parent.width / 3; height: parent.height
                         hoverEnabled: true
@@ -187,16 +209,16 @@ Panel {
                         ctx.reset()
                         var center = width / 2, radius = center - Style.space(13)
                         ctx.lineWidth = Style.space(24)
-                        var a = amounts[0], b = amounts[1]
-                        var sum = a !== null && b !== null ? a + b : 0
+                        var sum = amounts.some(function(a) { return a === null }) ? 0 : amounts.reduce(function(a, b) { return a + b }, 0)
                         ctx.strokeStyle = emptyColor
                         ctx.beginPath(); ctx.arc(center, center, radius, 0, 2 * Math.PI); ctx.stroke()
                         if (sum <= 0) return
-                        var start = -Math.PI / 2, colors = [root.claudeColor, root.codexColor]
-                        for (var i = 0; i < 2; i++) {
+                        var start = -Math.PI / 2, colors = root.costProviders.map(function(p) { return p.color })
+                        var segments = amounts.filter(function(a) { return a > 0 }).length
+                        for (var i = 0; i < amounts.length; i++) {
                           var sweep = amounts[i] / sum * 2 * Math.PI
                           if (sweep > 0) {
-                            var gap = amounts[1-i] > 0 ? Math.min(0.018, sweep / 4) : 0
+                            var gap = segments > 1 ? Math.min(0.018, sweep / 4) : 0
                             ctx.strokeStyle = colors[i]
                             ctx.beginPath(); ctx.arc(center, center, radius, start + gap, start + sweep - gap); ctx.stroke()
                           }
@@ -227,22 +249,22 @@ Panel {
                     anchors.verticalCenter: parent.verticalCenter
                     spacing: Style.space(12)
                     Repeater {
-                      model: ["Claude", "Codex"]
+                      model: root.costProviders
                       Item {
                         id: legendRow
-                        required property string modelData
+                        required property var modelData
                         required property int index
                         width: parent.width; height: Style.space(20)
                         Rectangle {
                           id: dot
                           width: Style.space(9); height: width; radius: width/2
                           anchors.verticalCenter: parent.verticalCenter
-                          color: legendRow.index === 0 ? root.claudeColor : root.codexColor
+                          color: legendRow.modelData.color
                         }
                         Label {
                           anchors.left: dot.right; anchors.leftMargin: Style.space(7)
                           anchors.verticalCenter: parent.verticalCenter
-                          text: legendRow.modelData; font.pixelSize: Style.space(14)
+                          text: legendRow.modelData.shortName; font.pixelSize: Style.space(14)
                         }
                         Label {
                           width: Math.min(implicitWidth, parent.width * 0.52)
@@ -267,7 +289,7 @@ Panel {
             }
           }
           Repeater {
-            model: root.providers
+            model: root.settingsOpen ? [] : root.providers
             Column {
               id: providerGroup
               required property var modelData
@@ -278,13 +300,13 @@ Panel {
                 spacing: Style.space(7)
                 TintedIcon {
                   id: providerIcon
-                  iconSource: Qt.resolvedUrl("assets/" + (providerGroup.modelData.id === "codex" ? "openai" : "claude") + ".svg"); ink: root.dim
+                  iconSource: Qt.resolvedUrl("assets/" + providerGroup.modelData.icon); ink: root.dim
                   width: Style.space(21); height: width
                   anchors.verticalCenter: parent.verticalCenter
                 }
                 Label {
                   id: providerName
-                  text: providerGroup.modelData.id === "claude" ? "Claude" : "Codex"
+                  text: providerGroup.modelData.shortName
                   font.pixelSize: Style.space(18); font.weight: Font.DemiBold
                   anchors.verticalCenter: parent.verticalCenter
                 }
@@ -414,27 +436,31 @@ Panel {
             }
           }
           Row {
+            visible: !root.settingsOpen
             width: parent.width
+            spacing: Style.space(6)
             Label {
-              width: parent.width - refreshButton.width
+              width: parent.width - refreshButton.width - settingsButton.width - Style.space(12)
               anchors.verticalCenter: parent.verticalCenter
               text: root.service && root.service.demoMode !== "" ? "Headroom · sample data" : root.service && (root.service.refreshing || root.service.costsRefreshing) ? "Updating usage…" : "Headroom · updates every 5 min"
               color: root.dim; font.pixelSize: Style.space(11)
               wrapMode: Text.WordWrap
             }
-            AbstractButton {
+            PillButton {
+              id: settingsButton
+              text: "Settings"
+              ink: root.foreground; surface: root.group; hotSurface: root.track
+              enabled: root.service !== null
+              onClicked: root.showSettings()
+            }
+            PillButton {
               id: refreshButton
-              width: Style.space(76); height: Style.space(30)
-              enabled: root.service !== null && !root.service.refreshing && !root.service.costsRefreshing
-              hoverEnabled: true
+              text: "Refresh"
+              width: Style.space(76)
+              ink: root.foreground; surface: root.group; hotSurface: root.track
+              enabled: root.service !== null && root.providers.length > 0 && !root.service.refreshing && !root.service.costsRefreshing
               Accessible.name: "Refresh usage"
               onClicked: root.refresh()
-              background: Rectangle { radius: height / 2; color: refreshButton.hovered ? root.track : root.group }
-              contentItem: Label {
-                text: "Refresh"; font.pixelSize: Style.space(12); font.weight: Font.DemiBold
-                color: refreshButton.enabled ? root.foreground : root.dim
-                horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter
-              }
             }
           }
         }

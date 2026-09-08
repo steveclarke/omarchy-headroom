@@ -1,0 +1,48 @@
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const vm = require('node:vm');
+const api = vm.createContext({});
+vm.runInContext(fs.readFileSync(`${__dirname}/../Providers.js`, 'utf8'), api);
+const raw = fs.readFileSync(`${__dirname}/../providers.json`, 'utf8');
+const catalog = api.catalog(raw);
+const plain = value => JSON.parse(JSON.stringify(value));
+
+test('bundled catalog validates; malformed or duplicated entries fail closed', () => {
+  assert.equal(catalog.length, 2);
+  assert.deepEqual(plain(api.catalog('invalid')), []);
+  const duplicate = JSON.parse(raw); duplicate.providers[1].id = 'claude';
+  assert.deepEqual(plain(api.catalog(JSON.stringify(duplicate))), []);
+  const unsafe = JSON.parse(raw); unsafe.providers[0].icon = '../private.svg';
+  assert.deepEqual(plain(api.catalog(JSON.stringify(unsafe))), []);
+});
+test('defaults preserve both bar summaries and costs, sanitizing unknown preferences', () => {
+  const settings = api.normalize(catalog, {providerOrder:['unknown', 'codex', 'codex'], providers:{codex:{display:'invalid'}}});
+  assert.deepEqual(plain(settings.providerOrder), ['codex','claude']);
+  assert.deepEqual(plain(api.selected(catalog, settings, true, false)), ['codex','claude']);
+  assert.equal(settings.showCosts, true);
+});
+test('panel-only continues collection; off removes it from collection and costs', () => {
+  const settings = api.normalize(catalog, {providers:{claude:{display:'panel'},codex:{display:'off'}},showCosts:false});
+  assert.deepEqual(plain(api.selected(catalog, settings, false, false)), ['claude']);
+  assert.deepEqual(plain(api.selected(catalog, settings, true, false)), []);
+  assert.deepEqual(plain(api.selected(catalog, settings, false, true)), ['claude']);
+  assert.equal(settings.showCosts, false);
+  settings.providers.claude.display='off';
+  assert.deepEqual(plain(api.selected(catalog, settings, false, false)), []);
+});
+test('settings persistence retains unrelated native widget options', () => {
+  const original={id:'headroom',enabled:true,monitor:'primary',custom:{value:4}};
+  const config={bar:{layout:{center:[null, "omarchy.clock", original]}}};
+  const found=api.entry(config,'headroom');
+  const saved=api.mergedEntry(found,api.normalize(catalog,{}));
+  assert.equal(saved.monitor,'primary');
+  assert.equal(saved.custom.value,4);
+  assert.equal(original.providerOrder,undefined);
+  assert.deepEqual(plain(api.entry({},'headroom')),{});
+});
+
+test('oversized order settings fall back to the bounded catalog', () => {
+  const settings=api.normalize(catalog,{providerOrder:Array(1000).fill('codex')});
+  assert.deepEqual(plain(settings.providerOrder),['claude','codex']);
+});

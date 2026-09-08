@@ -25,6 +25,10 @@ import time
 MAX_OUTPUT = 4 * 1024 * 1024
 MAX_REPORT = 131072
 COLLECTOR_DIR = Path('/usr/share/omarchy/bin')
+CATALOG = {p['id']: p for p in json.loads((Path(__file__).resolve().parents[1] / 'providers.json').read_text())['providers']}
+if not CATALOG or any(not re.fullmatch(r'[a-z][a-z0-9-]{0,39}', id)
+                      or p['collector'] != 'omarchy-agent-usage-' + id for id, p in CATALOG.items()):
+    raise ValueError('Invalid bundled provider catalog')
 TIMEOUT = 55
 ACTIVE = set()
 ACTIVE_LOCK = threading.Lock()
@@ -224,8 +228,8 @@ def observation(record, provider, started, finished, cache_before=None, cache_af
         raise CollectionError("Collector format changed · update Headroom")
     if record.get("usageStatusText"):
         status = str(record["usageStatusText"]).lower()
-        if "auth" in status or "sign-in" in status:
-            raise CollectionError("Sign in with the provider CLI, then refresh")
+        if "auth" in status or "sign-in" in status or "sign in" in status:
+            raise CollectionError(CATALOG[provider]["loginHint"])
         raise CollectionError("Live usage unavailable · try refreshing")
     limits = record.get("limits")
     if not isinstance(limits, list) or len(limits) > 50:
@@ -247,17 +251,22 @@ def observation(record, provider, started, finished, cache_before=None, cache_af
         else:
             observed = 0
             state, message = "stale", "Last reading · a fresh Claude check could not be verified"
-    return {"id": provider, "name": "Claude Code" if provider == "claude" else "Codex",
+    return {"id": provider, "name": CATALOG[provider]["name"],
             "plan": clean(record.get("tierLabel"), 40), "state": state, "message": message,
             "observedAt": observed, "windows": windows}
 
 
 def collect(provider):
+    if provider not in CATALOG:
+        raise CollectionError("Unsupported provider")
     cache = Path(os.environ.get("XDG_CACHE_HOME", str(Path.home() / ".cache"))) / "omarchy/agent-usage/claude-limits.json"
-    before = read_probe_cache(cache) if provider == "claude" else None
-    started = time.time() * 1000
     try:
-        command = [str(COLLECTOR_DIR / ("omarchy-agent-usage-" + provider)), "--limits-only"]
+        executable = COLLECTOR_DIR / CATALOG[provider]["collector"]
+        if not executable.is_file() or not os.access(executable, os.X_OK):
+            raise CollectionError(CATALOG[provider]["shortName"] + " collector missing · update Omarchy")
+        before = read_probe_cache(cache) if provider == "claude" else None
+        started = time.time() * 1000
+        command = [str(executable), "--limits-only"]
         # Native Claude's reuse window also treats a negative cache age as
         # recent. Bypass it only to recover from a backward clock adjustment.
         stamp = before.get("fetchedAtMs") if before else None
@@ -271,7 +280,7 @@ def collect(provider):
             after = None
         return observation(record, provider, started, finished, before, after)
     except CollectionError as exc:
-        return {"id": provider, "name": "Claude Code" if provider == "claude" else "Codex",
+        return {"id": provider, "name": CATALOG[provider]["name"],
                 "plan": "", "state": "unavailable", "message": str(exc), "observedAt": 0, "windows": []}
 
 
@@ -342,6 +351,8 @@ def cost_environment(provider, empty_home):
 
 
 def collect_cost(provider):
+    if provider not in ("claude", "codex") or not CATALOG[provider]["costs"]:
+        return {"id": provider, "state": "unavailable", "daily": {}, "message": "Local cost estimates are not supported"}
     runtime = Path(__file__).resolve().parents[1] / "runtime"
     version = json.loads((runtime / "package.json").read_text())["dependencies"]["ccusage"]
     data_home = Path(os.environ.get("XDG_DATA_HOME", str(Path.home() / ".local/share")))
@@ -362,11 +373,37 @@ def collect_cost(provider):
                 "message": "Local costs unavailable · check the cost reader and refresh"}
 
 
+def dependency_checks(providers):
+    """Read-only checks; no login files, provider requests, or history scans."""
+    root = Path(__file__).resolve().parents[1]
+    version = json.loads((root / 'runtime/package.json').read_text())['dependencies']['ccusage']
+    reader = Path(os.environ.get('XDG_DATA_HOME', str(Path.home() / '.local/share'))) / 'headroom' / ('ccusage-' + version) / 'node_modules/ccusage/src/cli.js'
+    checks = [{'id': id + '-collector', 'available': (COLLECTOR_DIR / CATALOG[id]['collector']).is_file()
+               and os.access(COLLECTOR_DIR / CATALOG[id]['collector'], os.X_OK), 'optional': False} for id in providers]
+    checks.extend([
+        {'id': 'omarchy-shell', 'available': Path('/usr/share/omarchy/shell/shell.qml').is_file(), 'optional': False},
+        {'id': 'qt6-5compat', 'available': Path('/usr/lib/qt6/qml/Qt5Compat/GraphicalEffects/qmldir').is_file(), 'optional': False},
+        {'id': 'node', 'available': os.access('/usr/bin/node', os.X_OK), 'optional': True},
+        {'id': 'cost-reader', 'available': reader.is_file(), 'optional': True}
+    ])
+    return checks
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--parent", type=int)
     parser.add_argument("--costs", action="store_true")
+    parser.add_argument("--providers", nargs="*", choices=list(CATALOG), default=list(CATALOG))
+    parser.add_argument("--check-dependencies", action="store_true")
     args = parser.parse_args()
+    if len(args.providers) != len(set(args.providers)):
+        parser.error("providers must be unique")
+    if args.check_dependencies:
+        checks = dependency_checks(args.providers)
+        print(json.dumps(checks))
+        if any(not check["available"] and not check["optional"] for check in checks):
+            raise SystemExit(1)
+        return
     signal.signal(signal.SIGTERM, terminate)
     signal.signal(signal.SIGINT, terminate)
     if args.parent:
@@ -376,7 +413,7 @@ def main():
         threading.Thread(target=watch_parent, args=(parent,), daemon=True).start()
     observed = time.time() * 1000
     with concurrent.futures.ThreadPoolExecutor(max_workers=2) as pool:
-        providers = list(pool.map(collect_cost if args.costs else collect, ("claude", "codex")))
+        providers = list(pool.map(collect_cost if args.costs else collect, args.providers))
     payload = json.dumps({"schema": 1, "providers": providers, "observedAt": observed}, allow_nan=False).encode("utf-8")
     if len(payload) > MAX_REPORT:
         raise SystemExit("Usage report exceeds its size limit")

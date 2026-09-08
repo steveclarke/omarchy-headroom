@@ -5,7 +5,7 @@ import os,subprocess,tempfile,shutil,json
 source=Path(__file__).resolve().parents[1]
 with tempfile.TemporaryDirectory(prefix='headroom-qml-review-') as directory:
  root=Path(directory)
- for name in ('CollectorProcess.qml','Wire.js','Service.qml','Costs.js','Model.js'): shutil.copyfile(source/name,root/name)
+ for name in ('CollectorProcess.qml','Wire.js','Service.qml','Costs.js','Model.js','Providers.js','providers.json'): shutil.copyfile(source/name,root/name)
  (root/'bin').mkdir()
  doc={'schema':1,'observedAt':100,'providers':[{'id':id,'state':'fresh','message':'','daily':{}} for id in ('claude','codex')]}
  for mode in ('valid','malformed','oversized','stderr','cancel'):
@@ -19,7 +19,7 @@ with tempfile.TemporaryDirectory(prefix='headroom-qml-review-') as directory:
   callback='console.log("FIXTURE_COMPLETED"); Qt.quit()' if mode=='valid' else 'console.log("UNEXPECTED_COMPLETION"); Qt.exit(2)'
   failure='console.log("FIXTURE_FAILED_CLOSED"); Qt.quit()' if mode in ('malformed','oversized','stderr') else 'console.log("UNEXPECTED_FAILURE"); Qt.exit(2)'
   cancel='Timer { interval:100; running:true; onTriggered: c.cancel() } Timer { interval:500; running:true; onTriggered: { if (c.active) Qt.exit(3); else { console.log("FIXTURE_CANCELLED"); Qt.quit() } } }' if mode=='cancel' else ''
-  (root/'shell.qml').write_text('import QtQuick\nimport Quickshell\nShellRoot { CollectorProcess { id:c; costs:true; onCompleted: {'+callback+'} onFailed: {'+failure+'} } Component.onCompleted:c.start(); Timer { interval:3000; running:true; onTriggered:Qt.exit(4) } '+cancel+' }')
+  (root/'shell.qml').write_text('import QtQuick\nimport Quickshell\nShellRoot { CollectorProcess { id:c; costs:true; providerIds:["claude","codex"]; onCompleted: {'+callback+'} onFailed: {'+failure+'} } Component.onCompleted:c.start(); Timer { interval:3000; running:true; onTriggered:Qt.exit(4) } '+cancel+' }')
   runtime=root/'runtime'; runtime.mkdir(mode=0o700,exist_ok=True)
   env=dict(os.environ,QT_QPA_PLATFORM='offscreen',QT_QPA_PLATFORMTHEME='',QT_QUICK_CONTROLS_STYLE='Basic',XDG_RUNTIME_DIR=str(runtime));env.pop('WAYLAND_DISPLAY',None);env.pop('DISPLAY',None)
   result=subprocess.run(['/usr/bin/quickshell','-p',str(root/'shell.qml')],env=env,capture_output=True,text=True,timeout=5)
@@ -36,3 +36,46 @@ with tempfile.TemporaryDirectory(prefix='headroom-qml-review-') as directory:
   output=result.stdout+result.stderr
   if result.returncode or 'FIXTURE_CLOCK_RECOVERED' not in output: print(mode,output);raise SystemExit(1)
   print(mode+': FIXTURE_CLOCK_RECOVERED')
+
+ # Real service selection changes, with fake native settings and helper I/O.
+ helper = '''import argparse,json,time
+from pathlib import Path
+p=argparse.ArgumentParser(); p.add_argument('--parent'); p.add_argument('--costs',action='store_true'); p.add_argument('--providers',nargs='*'); a=p.parse_args()
+with Path(__file__).with_name('requests.jsonl').open('a') as log: log.write(json.dumps({'costs':a.costs,'ids':a.providers})+'\\n')
+time.sleep(.35)
+now=time.time()*1000
+providers=[dict(id=id,state='fresh',message='',**({'daily':{}} if a.costs else {'name':id,'plan':'','observedAt':now,'windows':[{'id':'weekly','title':'Weekly','used':.2,'resetAt':now+86400000,'durationMs':604800000}]})) for id in a.providers]
+print(json.dumps({'schema':1,'observedAt':now,'providers':providers}))
+'''
+ (root/'bin/headroom-collect').write_text(helper)
+ for mode in ('selection-race', 'reorder', 'disabled-startup'):
+  requests=root/'bin/requests.jsonl'; requests.unlink(missing_ok=True)
+  initial={'id':'io.github.steveclarke.headroom','enabled':True,'keep':'native-option'}
+  if mode=='disabled-startup': initial.update(providers={'claude':{'display':'off'},'codex':{'display':'off'}},showCosts=False)
+  mock='QtObject { id:host; property var shellConfig: ({bar:{layout:{center:['+json.dumps(initial)+']}}}); function updateEntryInline(id,value) { shellConfig={bar:{layout:{center:[value]}}}; return true } }'
+  functions='''function require(value,message) { if(!value) { console.log("UNEXPECTED_"+message); Qt.exit(3) } }
+function change(order,claude,codex,costs) { require(s.savePreferences({providerOrder:order,providers:{claude:{display:claude},codex:{display:codex}},showCosts:costs}),"save"); require(host.shellConfig.bar.layout.center[0].keep==="native-option","native-options") }
+'''
+  if mode=='selection-race':
+   actions='''Timer {interval:150;running:true;onTriggered:s.refresh()}
+Timer {interval:250;running:true;onTriggered:change(["claude","codex"],"off","bar",false)}
+Timer {interval:2100;running:true;onTriggered:{require(s.providers.length===1 && s.providers[0].id==="codex" && s.providers[0].state==="fresh","selected-result");require(s.costs.providers.length===0 && !s.costsRefreshing,"costs-stopped:"+JSON.stringify({ids:s.costIds,costs:s.costs,active:s.costsRefreshing,selection:s.activeCostSelection,preferences:s.preferences}));change(["claude","codex"],"off","off",false)}}
+Timer {interval:2900;running:true;onTriggered:{require(s.providers.length===0 && !s.refreshing,"all-off");console.log("FIXTURE_SELECTION_RACE");Qt.quit()}}
+'''
+  elif mode=='reorder':
+   actions='''Timer {interval:150;running:true;onTriggered:s.refresh()}
+Timer {interval:750;running:true;onTriggered:change(["codex","claude"],"panel","bar",true)}
+Timer {interval:1700;running:true;onTriggered:{require(s.providers.map(p=>p.id).join(",")==="codex,claude","display-order");require(s.barProviders.length===1 && s.barProviders[0].id==="codex","panel-only");require(s.costs.providers.length===2 && s.costs.providers.every(p=>p.state==="fresh"),"costs-retained");require(s.batchesStarted===1,"no-recollection");console.log("FIXTURE_REORDER");Qt.quit()}}
+'''
+  else:
+   actions='''Timer {interval:1500;running:true;onTriggered:{require(s.batchesStarted===0 && s.providers.length===0 && s.costs.providers.length===0,"disabled-startup");console.log("FIXTURE_DISABLED_STARTUP");Qt.quit()}}'''
+  (root/'shell.qml').write_text('import QtQuick\nimport Quickshell\nShellRoot { '+mock+' Service {id:s;shell:host} '+functions+actions+' Timer {interval:3500;running:true;onTriggered:Qt.exit(4)} }')
+  result=subprocess.run(['/usr/bin/quickshell','-p',str(root/'shell.qml')],env=env,capture_output=True,text=True,timeout=5)
+  output=result.stdout+result.stderr
+  if result.returncode or 'UNEXPECTED_' in output or 'FIXTURE_' not in output or 'TypeError' in output or 'ReferenceError' in output: print(mode,output);raise SystemExit(1)
+  calls=[json.loads(line) for line in requests.read_text().splitlines()] if requests.exists() else []
+  if mode=='selection-race':
+   assert sorted((call['costs'],','.join(call['ids'])) for call in calls)==[(False,'claude,codex'),(False,'codex'),(True,'claude,codex')], calls
+  elif mode=='reorder': assert len(calls)==2 and all(call['ids']==['claude','codex'] for call in calls), calls
+  else: assert calls==[], calls
+  print(mode+': '+next(line.strip() for line in output.splitlines() if 'FIXTURE_' in line))

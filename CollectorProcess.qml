@@ -7,6 +7,8 @@ import "Wire.js" as Wire
 Item {
   id: root
   property bool costs: false
+  property var providerIds: []
+  property var requestIds: []
   property bool active: false
   property bool accepting: false
   property string buffer: ""
@@ -16,6 +18,7 @@ Item {
 
   function start() {
     if (active) return
+    requestIds = providerIds.slice()
     buffer = ""; errorSize = 0; accepting = true; active = true
     deadline.start()
     worker.running = true
@@ -36,10 +39,10 @@ Item {
   }
   Process {
     id: worker
-    command: ["/usr/bin/sh", "-c", root.costs
-      ? "/usr/bin/python3 -I -S \"$1\" --parent \"$$\" --costs & wait"
-      : "/usr/bin/python3 -I -S \"$1\" --parent \"$$\" & wait", "headroom",
+    // Positional arguments stay separate; provider IDs never become shell code.
+    command: ["/usr/bin/sh", "-c", "script=$1; shift; /usr/bin/python3 -I -S \"$script\" --parent \"$$\" \"$@\" & wait", "headroom",
       decodeURIComponent(Qt.resolvedUrl("bin/headroom-collect").toString().replace(/^file:\/\//, ""))]
+      .concat(root.costs ? ["--costs"] : []).concat(["--providers"]).concat(root.requestIds)
     stdout: SplitParser {
       splitMarker: ""
       onRead: function(chunk) {
@@ -63,7 +66,7 @@ Item {
       root.accepting = false
       try {
         if (exitCode !== 0) throw new Error("exit")
-        var doc = Wire.parse(root.buffer, root.costs)
+        var doc = Wire.parse(root.buffer, root.costs, root.requestIds)
         root.buffer = ""
         root.completed(doc)
       } catch (e) { root.buffer = ""; root.failed() }

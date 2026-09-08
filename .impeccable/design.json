@@ -15,7 +15,7 @@
     ],
     "native": {
       "platform": "Linux / Omarchy / Quickshell / QML",
-      "sources": ["Panel.qml", "BarWidget.qml", "TintedIcon.qml", "Costs.js", "Model.js", "Pace.js"],
+      "sources": ["Panel.qml", "BarWidget.qml", "TintedIcon.qml", "Costs.js", "Model.js", "Pace.js", "SettingsView.qml", "PillButton.qml", "Providers.js", "providers.json"],
       "measurementConvention": "Style.space(n) resolves native shell scaling; values are not a CSS pixel scale.",
       "previewSupport": "Native component metadata only. No HTML/CSS surrogate gallery or synthesized tonal ramps.",
       "colorExpressions": {
@@ -65,7 +65,7 @@
         {
           "name": "Weekly bar summary",
           "source": "BarWidget.qml",
-          "description": "Two monochrome provider marks and measured-width weekly percentages. Horizontal with a plain gap and no divider, or stacked for a vertical bar. Stale and weekly urgency indicators accompany the values.",
+          "description": "Selected monochrome provider marks and weekly percentages, with a plain gap and no divider. A native Headroom label remains when no provider is shown in the bar.",
           "states": ["normal", "stale", "weekly urgent or exhausted", "unavailable", "panel open"]
         },
         {
@@ -91,11 +91,17 @@
           "states": ["calm forecast: theme-accent fill, no note or marker, hover projection", "caution forecast: yellow fill and pace marker, amber hourglass and dim normal-weight spare note", "urgent: urgency fill and flame, pace marker, dim normal-weight ETA when available", "exhausted: urgency fill and flame, Limit reached, no marker", "fresh without projection: absolute usage bands at 80% and 90%, no note or marker", "stale: status, fill opacity 0.4 and no forecast", "missing or expired: em dash and empty meter"]
         },
         {
-          "name": "Refresh and status footer",
+          "name": "Settings, Refresh and status footer",
           "source": "Panel.qml",
-          "description": "Text status beside a pill action; status identifies refresh activity and synthetic previews.",
-          "size": "Style.space(76) by Style.space(30)",
+          "description": "Text status beside Settings and Refresh pill actions; status identifies refresh activity and synthetic previews.",
+          "size": "PillButton: minimum Style.space(64) wide by Style.space(30) high",
           "states": ["rest: group background", "hover: track background", "disabled: dim text"]
+        },
+        {
+          "name": "Provider settings",
+          "source": "SettingsView.qml",
+          "description": "Provider order arrows and Bar + panel / Panel only / Off pills inside inset groups, a native cost toggle, and Cancel / Save actions. Uses the same panel, colors and scaling.",
+          "states": ["draft", "saved", "cancelled", "save unavailable", "all providers off"]
         }
       ]
     }
