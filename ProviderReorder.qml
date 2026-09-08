@@ -13,23 +13,41 @@ QtObject {
   property real startY: 0
   property bool active: false
   property bool keyboardFocus: false
+  property bool inside: false
   signal moved(string providerId, string targetId, bool after)
   readonly property real dropY: {
     for (var i = 0; i < repeater.count; i++) {
       var item = repeater.itemAt(i)
-      if (item && item.providerId === targetId) return item.y + (after ? item.height : 0)
+      if (item && item.providerId === targetId) return item.y + (after ? item.height + container.spacing / 2 : -container.spacing / 2)
     }
-    return 0
+    return dragged ? dragged.y - container.spacing / 2 : 0
   }
-  // Zero size keeps this overlay out of the Column's layout.
+  // Paint above the dragged section without adding an item to the Column layout.
   readonly property Item indicator: Item {
-    parent: root.container
-    width: 0; height: 0; z: 5
+    parent: root.dragged
+    width: root.container.width; height: Style.space(7); z: 5
+    y: root.dragged ? -root.dragged.y - root.offset : 0
     Rectangle {
-      width: root.container.width; height: Style.space(2)
-      y: root.dropY
-      visible: root.active && root.targetId !== ""
-      color: Color.accent
+      objectName: "drop-indicator"
+      width: root.container.width
+      height: Style.space(7)
+      y: Math.max(0, Math.min(root.container.height - height, root.dropY - height / 2))
+      visible: root.active && root.inside
+      color: Color.popups.background
+      Rectangle {
+        anchors.verticalCenter: parent.verticalCenter
+        width: parent.width; height: Style.space(3)
+        color: Color.accent
+      }
+      Rectangle {
+        width: Style.space(7); height: width
+        color: Color.accent
+      }
+      Rectangle {
+        anchors.right: parent.right
+        width: Style.space(7); height: width
+        color: Color.accent
+      }
     }
   }
 
@@ -45,7 +63,8 @@ QtObject {
     active = true
     offset = delta
     targetId = ""
-    if (point.x < 0 || point.x > container.width || point.y < 0 || point.y > container.height) return
+    inside = point.x >= 0 && point.x <= container.width && point.y >= 0 && point.y <= container.height
+    if (!inside) return
     var center = dragged.y + dragged.height / 2 + offset
     for (var i = 0; i < repeater.count; i++) {
       var candidate = repeater.itemAt(i)
@@ -71,5 +90,5 @@ QtObject {
     if (index >= 0 && next >= 0 && next < repeater.count)
       moved(item.providerId, repeater.itemAt(next).providerId, direction > 0)
   }
-  function cancel() { dragged = null; active = false; offset = 0; targetId = "" }
+  function cancel() { dragged = null; active = false; inside = false; offset = 0; targetId = "" }
 }

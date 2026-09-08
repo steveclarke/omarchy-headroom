@@ -41,6 +41,13 @@ Item {
       view.setShowInBar("claude",false);host.saves=0
       var end=dragStart("claude","codex")
       compare(host.saves,0)
+      var indicator=findChild(view,"drop-indicator")
+      verify(indicator!==null && indicator.visible)
+      verify(indicator.height >= 7)
+      verify(indicator.parent.width > 0 && indicator.parent.height > 0)
+      var mapped=indicator.mapToItem(view,0,0)
+      verify(mapped.y >= 0 && mapped.y + indicator.height <= view.height)
+      verify(indicator.y >= 0 && indicator.y + indicator.height <= view.height)
       mouseRelease(view,end.x,end.y);wait(30)
       compare(host.preferences.providerOrder.join(","),"codex,claude")
       compare(host.preferences.providers.claude.display,"panel")
