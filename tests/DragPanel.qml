@@ -117,6 +117,22 @@ ShellRoot {
       data.nextRefreshAt=data.nowMs+300000;data.refreshing=false;wait(30)
       compare(label.text,"Next update in 5 min")
     }
+    function test_anchor_stays_fixed_until_reopened() {
+      var originalX=anchor.x, originalWidth=anchor.width
+      var popup=null
+      for (var i=0;i<details.data.length;i++) if (details.data[i].cardOrigin !== undefined) popup=details.data[i]
+      verify(popup!==null)
+      var cardX=popup.cardOrigin.x
+      var heldX=details.heldAnchor.x, heldWidth=details.heldAnchor.width
+      anchor.x+=90;anchor.width=40;wait(30)
+      compare(popup.cardOrigin.x,cardX)
+      compare(details.heldAnchor.x,heldX)
+      compare(details.heldAnchor.width,heldWidth)
+      details.close();wait(30);details.open();wait(50)
+      compare(details.heldAnchor.x,anchor.x)
+      compare(details.heldAnchor.width,40)
+      anchor.x=originalX;anchor.width=originalWidth
+    }
     function test_main_down() {perform("claude","codex")}
     function test_main_up() {perform("codex","claude")}
   }

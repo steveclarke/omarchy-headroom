@@ -1,6 +1,7 @@
 pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Controls
+import Quickshell
 import qs.Commons
 import qs.Ui
 import qs.Ui as Ui
@@ -15,6 +16,19 @@ Panel {
   manageIpc: false
   property var anchorItem: null
   property var hostWidget: null
+  property bool anchorCaptured: false
+  // Keep the popup steady while visibility changes resize/reposition its bar button.
+  readonly property Item heldAnchor: Item {
+    parent: root.anchorItem && root.anchorItem.QsWindow.window ? root.anchorItem.QsWindow.window.contentItem : null
+  }
+  function captureAnchor() {
+    if (!anchorItem || !heldAnchor.parent) { anchorCaptured = false; return }
+    var position = anchorItem.mapToItem(heldAnchor.parent, 0, 0)
+    heldAnchor.x = position.x; heldAnchor.y = position.y
+    heldAnchor.width = anchorItem.width; heldAnchor.height = anchorItem.height
+    anchorCaptured = true
+  }
+  onAnchorItemChanged: anchorCaptured = false
   readonly property var service: bar && bar.shell ? bar.shell.serviceFor(moduleName) : null
   readonly property double now: service ? service.nowMs : Date.now()
   readonly property var providers: service ? service.providers : []
@@ -43,7 +57,10 @@ Panel {
   readonly property var costAmounts: costProviders.map(function(p) { return Costs.amount(root.costs, p.id, root.period, root.now) })
   function showSettings() { if (service) { settingsOpen = true; detailDrag.cancel(); scroll.contentY = 0; settingsView.begin() } }
   function hideSettings() { settingsOpen = false; scroll.contentY = 0; keys.forceActiveFocus() }
-  onOpenedChanged: if (!opened) { settingsOpen = false; detailDrag.cancel(); orderError = "" }
+  onOpenedChanged: {
+    if (opened) captureAnchor()
+    else { settingsOpen = false; detailDrag.cancel(); orderError = "" }
+  }
   readonly property var costTotal: Costs.total(costs, period, now)
   readonly property string costMessage: Costs.message(costs, now)
   function mix(a, b, amount) {
@@ -77,7 +94,7 @@ Panel {
   }
   KeyboardPanel {
     id: panel
-    anchorItem: root.anchorItem
+    anchorItem: root.anchorCaptured ? root.heldAnchor : root.anchorItem
     bar: root.bar
     owner: root.hostWidget || root
     open: root.opened

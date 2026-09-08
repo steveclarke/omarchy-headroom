@@ -76,3 +76,5 @@ Use synthetic usage for captures. Check both light and dark palettes, missing an
 Cost has a draggable row in Settings and a grip beside its panel heading. Move it above, between, or below providers. Its position is retained when hidden; moving Cost does not change provider order in the bar.
 
 Cost periods fill one full-width row with equal-width choices. Settings uses the compact two-column matrix described above.
+
+The panel captures its bar anchor on opening and keeps that position until it closes. Live bar width changes must not move Settings under the pointer. Reopening captures the current button position; native screen-edge fitting remains active.
