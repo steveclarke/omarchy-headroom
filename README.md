@@ -63,13 +63,14 @@ Removing the plugin stops its workers and removes the plugin checkout. The separ
 
 ## Settings
 
-Click **Settings** in the panel, or press **S** while it is open. Claude and Codex both default to Bar + panel, with cost estimates enabled.
+The panel uses Omarchy's shared popup border, corner radius, font and control styles, so it follows your desktop theme.
 
-| Choice | Behavior |
-| --- | --- |
-| Bar + panel | Show the weekly percentage in the bar and full details in the panel. |
-| Panel only | Collect usage and show details when you click Headroom. |
-| Off | Hide the provider and stop Headroom's quota and cost collection for it. |
+Click **Settings** in the panel, or press **S** while it is open. Each provider has two switches:
+
+- The switch beside its name enables usage collection and the details shown when you click Headroom. Turning it off hides that provider and stops its quota and cost workers.
+- **Show weekly usage in top bar** adds its weekly percentage to the top bar. Turning this off keeps the provider in the details. The switch is disabled while the provider is off and remembers its choice when re-enabled.
+
+Both providers and their top-bar summaries default to on, with cost estimates enabled. Existing visibility choices are preserved when updating.
 
 The arrows set the same provider order for the bar, quota groups and cost legend. **Show cost estimates** controls the whole cost section and its local-history workers. Quotas work without installing the optional cost reader. When there are no bar summaries, a compact **Headroom** entry keeps the panel and settings reachable.
 

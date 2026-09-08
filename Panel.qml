@@ -3,6 +3,7 @@ import QtQuick
 import QtQuick.Controls
 import qs.Commons
 import qs.Ui
+import qs.Ui as Ui
 import "Model.js" as Model
 import "Pace.js" as Pace
 import "Costs.js" as Costs
@@ -19,11 +20,11 @@ Panel {
   readonly property var providers: service ? service.providers : []
   readonly property var costs: service ? service.costs : Costs.empty([])
   readonly property int period: service ? service.costPeriod : 0
-  readonly property color surface: Color.popups.background.hslLightness > 0.5 ? mix(Color.popups.background, "white", 0.68) : Color.popups.background
+  readonly property color surface: Color.popups.background
   readonly property color foreground: Color.popups.text
-  readonly property color group: mix(surface, foreground, 0.035)
-  readonly property color track: mix(group, foreground, 0.14)
-  readonly property color dim: legible(mix(foreground, surface, 0.22), mix(group, foreground, 0.055))
+  readonly property color group: surface
+  readonly property color track: Style.selectedFillFor(foreground, Color.accent)
+  readonly property color dim: legible(mix(foreground, surface, 0.22), surface)
   readonly property color urgent: legible(Color.urgent, group)
   readonly property color caution: surface.hslLightness > 0.5 ? "#c49a16" : "#edc35b"
   readonly property color cautionIcon: surface.hslLightness > 0.5 ? "#916900" : caution
@@ -60,8 +61,8 @@ Panel {
   }
   component Label: Text {
     color: root.foreground
-    font.family: "sans-serif"
-    font.pixelSize: Style.space(14)
+    font.family: Style.font.family
+    font.pixelSize: Style.font.body
     textFormat: Text.PlainText
   }
   KeyboardPanel {
@@ -71,18 +72,11 @@ Panel {
     owner: root.hostWidget || root
     open: root.opened
     focusTarget: root.settingsOpen ? settingsView : keys
-    padding: Style.space(18)
-    borderSpec: Border.none()
     contentWidth: panel.fittedContentWidth(Style.space(400))
     contentHeight: panel.fittedContentHeight(content.implicitHeight, Style.space(1000))
-    // Style only this native panel instance. Keep its focus, positioning and
-    // dismissal implementation. Guard the host structure for future shells.
-    readonly property var cardSurface: keys.parent && keys.parent.parent && "radius" in keys.parent.parent ? keys.parent.parent : null
     PanelKeyCatcher {
       id: keys
       blocked: root.settingsOpen
-      Binding { target: panel.cardSurface; property: "radius"; value: Style.space(18); when: panel.cardSurface !== null }
-      Binding { target: panel.cardSurface; property: "color"; value: root.surface; when: panel.cardSurface !== null }
       anchors.fill: parent
       onCloseRequested: root.close()
       onTabRequested: function(direction) { if (root.bar) root.bar.switchPanelFrom(root.hostWidget || root, direction) }
@@ -106,13 +100,13 @@ Panel {
         Column {
           id: content
           width: scroll.width
-          spacing: Style.space(22)
+          spacing: Style.spacing.panelGap
           SettingsView {
             id: settingsView
             visible: root.settingsOpen
             width: parent.width
             service: root.service
-            ink: root.foreground; dim: root.dim; surface: root.surface; group: root.group; track: root.track
+            ink: root.foreground; dim: root.dim
             onDone: root.hideSettings()
           }
           Label {
@@ -127,7 +121,7 @@ Panel {
             spacing: Style.space(10)
             Row {
               spacing: Style.space(8)
-              Label { text: "Cost"; font.pixelSize: Style.space(18); font.weight: Font.DemiBold }
+              Label { text: "Cost"; font.pixelSize: Style.font.heading; font.weight: Font.DemiBold }
               TintedIcon {
                 anchors.verticalCenter: parent.verticalCenter
                 width: Style.space(14); height: width
@@ -142,52 +136,30 @@ Panel {
                 }
               }
             }
-            Rectangle {
+            Item {
               width: parent.width
-              height: costContent.implicitHeight + Style.space(28)
-              radius: Style.space(14)
-              color: root.group
+              height: costContent.implicitHeight
               Column {
                 id: costContent
-                x: Style.space(14); y: x
-                width: parent.width - x * 2
+                width: parent.width
                 spacing: Style.space(16)
-                Rectangle {
-                  width: parent.width; height: Style.space(34)
-                  radius: height / 2
-                  color: root.mix(root.group, root.foreground, 0.055)
-                  Rectangle {
-                    x: Style.space(3) + root.period * (parent.width - Style.space(6)) / 3
-                    y: Style.space(3)
-                    width: (parent.width - Style.space(6)) / 3
-                    height: parent.height - Style.space(6)
-                    radius: height / 2
-                    color: root.surface
-                    Behavior on x { NumberAnimation { duration: 150; easing.type: Easing.OutCubic } }
-                  }
-                  Row {
-                    anchors.fill: parent; anchors.margins: Style.space(3)
-                    Repeater {
-                      model: ["Today", "Yesterday", "30 Days"]
-                      AbstractButton {
-                        id: periodButton
-                        required property var modelData
-                        required property int index
-                        width: parent.width / 3; height: parent.height
-                        hoverEnabled: true
-                        Accessible.role: Accessible.PageTab
-                        Accessible.name: modelData
-                        Accessible.description: "Cost period. Use left/right arrows or keys 1, 2, 3."
-                        Accessible.selected: root.period === index
-                        onClicked: root.selectPeriod(index)
-                        contentItem: Label {
-                          text: periodButton.modelData
-                          horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter
-                          font.weight: root.period === periodButton.index ? Font.DemiBold : Font.Normal
-                          color: root.period === periodButton.index || periodButton.hovered ? root.foreground : root.dim
-                          font.pixelSize: Style.space(13)
-                        }
-                      }
+                Row {
+                  spacing: Style.spacing.md
+                  Repeater {
+                    model: ["Today", "Yesterday", "30 Days"]
+                    Ui.Button {
+                      required property string modelData
+                      required property int index
+                      text: modelData
+                      selected: root.period === index
+                      bordered: true
+                      foreground: root.foreground
+                      background: root.surface
+                      Accessible.role: Accessible.PageTab
+                      Accessible.name: text
+                      Accessible.selected: selected
+                      Accessible.description: "Cost period. Use left/right arrows or keys 1, 2, 3."
+                      onClicked: root.selectPeriod(index)
                     }
                   }
                 }
@@ -231,12 +203,12 @@ Panel {
                       Label {
                         width: parent.width; horizontalAlignment: Text.AlignHCenter
                         text: root.costTotal === null ? "—" : "$" + Math.round(root.costTotal).toLocaleString(Qt.locale("en_US"), 'f', 0)
-                        font.pixelSize: Style.space(20); font.weight: Font.DemiBold
+                        font.pixelSize: Style.font.display; font.weight: Font.DemiBold
                         minimumPixelSize: Style.space(12); fontSizeMode: Text.Fit
                       }
                       Label {
                         width: parent.width; horizontalAlignment: Text.AlignHCenter
-                        text: "USD"; color: root.dim; font.pixelSize: Style.space(11)
+                        text: "USD"; color: root.dim; font.pixelSize: Style.font.bodySmall
                       }
                     }
                     Accessible.role: Accessible.StaticText
@@ -263,13 +235,13 @@ Panel {
                         Label {
                           anchors.left: dot.right; anchors.leftMargin: Style.space(7)
                           anchors.verticalCenter: parent.verticalCenter
-                          text: legendRow.modelData.shortName; font.pixelSize: Style.space(14)
+                          text: legendRow.modelData.shortName; font.pixelSize: Style.font.body
                         }
                         Label {
                           width: Math.min(implicitWidth, parent.width * 0.52)
                           anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter
                           text: root.money(root.costAmounts[legendRow.index])
-                          font.pixelSize: Style.space(13)
+                          font.pixelSize: Style.font.body
                           minimumPixelSize: Style.space(10); fontSizeMode: Text.Fit
                           horizontalAlignment: Text.AlignRight
                           color: root.dim
@@ -283,7 +255,7 @@ Panel {
             Label {
               width: parent.width
               text: root.costMessage
-              color: root.dim; font.pixelSize: Style.space(11)
+              color: root.dim; font.pixelSize: Style.font.bodySmall
               wrapMode: Text.WordWrap
             }
           }
@@ -292,8 +264,10 @@ Panel {
             Column {
               id: providerGroup
               required property var modelData
+              required property int index
               width: content.width
-              spacing: Style.space(9)
+              spacing: Style.spacing.panelGap
+              PanelSeparator { visible: providerGroup.index > 0 || root.costProviders.length > 0; foreground: root.foreground }
               Row {
                 width: parent.width
                 spacing: Style.space(7)
@@ -306,7 +280,7 @@ Panel {
                 Label {
                   id: providerName
                   text: providerGroup.modelData.shortName
-                  font.pixelSize: Style.space(18); font.weight: Font.DemiBold
+                  font.pixelSize: Style.font.heading; font.weight: Font.DemiBold
                   anchors.verticalCenter: parent.verticalCenter
                 }
                 Label {
@@ -314,24 +288,22 @@ Panel {
                   text: providerGroup.modelData.plan
                   elide: Text.ElideRight
                   anchors.baseline: providerName.baseline
-                  color: root.dim; font.pixelSize: Style.space(13)
+                  color: root.dim; font.pixelSize: Style.font.body
                 }
               }
-              Rectangle {
+              Item {
                 width: parent.width
-                height: quotas.implicitHeight + Style.space(32)
-                radius: Style.space(14); color: root.group
+                height: quotas.implicitHeight
                 Column {
                   id: quotas
-                  x: Style.space(16); y: x
-                  width: parent.width - 2 * x
-                  spacing: Style.space(22)
+                  width: parent.width
+                  spacing: Style.spacing.panelGap
                   Label {
                     width: parent.width
                     text: Model.message(providerGroup.modelData, root.now)
                     visible: text !== ""
                     wrapMode: Text.WordWrap
-                    color: root.dim; font.pixelSize: Style.space(12)
+                    color: root.dim; font.pixelSize: Style.font.bodySmall
                   }
                   Repeater {
                     model: providerGroup.modelData.windows
@@ -354,7 +326,7 @@ Panel {
                           width: parent.width - (warning.visible ? warning.width + Style.space(10) : 0)
                           text: metric.modelData.title === "Fable Weekly" ? "Fable" : metric.modelData.title
                           elide: Text.ElideRight
-                          font.pixelSize: Style.space(16); font.weight: Font.DemiBold
+                          font.pixelSize: Style.font.title; font.weight: Font.DemiBold
                         }
                         Item {
                           id: warning
@@ -369,15 +341,15 @@ Panel {
                               visible: metric.flame || (metric.forecast !== null && metric.forecast.status === "caution")
                               text: metric.flame ? "󰈸" : "󰔟"
                               color: metric.flame ? root.urgent : root.cautionIcon
-                              font.family: "JetBrainsMono Nerd Font"
-                              font.pixelSize: Style.space(16)
+                              font.family: Style.font.family
+                              font.pixelSize: Style.font.heading
                               anchors.verticalCenter: parent.verticalCenter
                             }
                             Label {
                               id: warningText
                               visible: text !== ""
                               text: Pace.summary(metric.forecast, root.now)
-                              color: root.dim; font.pixelSize: Style.space(11)
+                              color: root.dim; font.pixelSize: Style.font.bodySmall
                               anchors.verticalCenter: parent.verticalCenter
                             }
                           }
@@ -389,7 +361,7 @@ Panel {
                         }
                       }
                       Rectangle {
-                        width: parent.width; height: Style.space(6); radius: height / 2
+                        width: parent.width; height: Style.space(6); radius: Math.min(Style.cornerRadius, height / 2)
                         color: root.track
                         Rectangle {
                           width: metric.remaining === "—" ? 0 : parent.width * Math.max(0, Math.min(1, 1 - metric.modelData.used))
@@ -425,7 +397,7 @@ Panel {
                           horizontalAlignment: Text.AlignRight
                           text: metric.modelData.resetAt > root.now ? "Resets in " + Pace.duration(metric.modelData.resetAt - root.now) : metric.modelData.resetAt > 0 ? "Awaiting reset update" : "Reset not reported"
                           wrapMode: Text.WordWrap
-                          color: root.dim; font.pixelSize: Style.space(13)
+                          color: root.dim; font.pixelSize: Style.font.body
                         }
                       }
                     }
@@ -434,6 +406,7 @@ Panel {
               }
             }
           }
+          PanelSeparator { visible: !root.settingsOpen; foreground: root.foreground }
           Row {
             visible: !root.settingsOpen
             width: parent.width
@@ -442,22 +415,27 @@ Panel {
               width: parent.width - refreshButton.width - settingsButton.width - Style.space(12)
               anchors.verticalCenter: parent.verticalCenter
               text: root.service && root.service.demoMode !== "" ? "Headroom · sample data" : root.service && (root.service.refreshing || root.service.costsRefreshing) ? "Updating usage…" : "Headroom · updates every 5 min"
-              color: root.dim; font.pixelSize: Style.space(11)
+              color: root.dim; font.pixelSize: Style.font.bodySmall
               wrapMode: Text.WordWrap
             }
-            PillButton {
+            Ui.Button {
               id: settingsButton
+              Accessible.role: Accessible.Button
+              Accessible.name: text
+              opacity: enabled ? 1 : 0.5
               text: "Settings"
               iconText: "󰒓"
-              ink: root.foreground; surface: root.group; hotSurface: root.track
+              foreground: root.foreground; bordered: true; iconSize: Style.font.icon
               enabled: root.service !== null
               onClicked: root.showSettings()
             }
-            PillButton {
+            Ui.Button {
               id: refreshButton
+              Accessible.role: Accessible.Button
+              opacity: enabled ? 1 : 0.5
               text: "Refresh"
               iconText: "󰑐"
-              ink: root.foreground; surface: root.group; hotSurface: root.track
+              foreground: root.foreground; bordered: true; iconSize: Style.font.icon
               enabled: root.service !== null && root.providers.length > 0 && !root.service.refreshing && !root.service.costsRefreshing
               Accessible.name: "Refresh usage"
               onClicked: root.refresh()

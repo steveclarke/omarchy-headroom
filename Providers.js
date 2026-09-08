@@ -39,7 +39,9 @@ function normalize(items, raw) {
   order.forEach(function(id) {
     var p = raw.providers && raw.providers[id]
     var mode = p && p.display
-    modes[id] = {display: ["off", "panel", "bar"].indexOf(mode) >= 0 ? mode : "bar"}
+    mode = ["off", "panel", "bar"].indexOf(mode) >= 0 ? mode : "bar"
+    // Retain the top-bar choice while disabled; legacy display values still work.
+    modes[id] = {display: mode, showInBar: mode === "off" ? p.showInBar !== false : mode === "bar"}
   })
   return {providerOrder: order, providers: modes, showCosts: raw.showCosts !== false}
 }

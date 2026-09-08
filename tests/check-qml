@@ -82,7 +82,7 @@ Timer {interval:1700;running:true;onTriggered:{require(s.providers.map(p=>p.id).
 
  # Settings uses native controls with a synthetic shared persistence service.
  # No real shell is launched, configuration written, or provider called.
- for name in ('SettingsView.qml', 'PillButton.qml', 'TintedIcon.qml'):
+ for name in ('SettingsView.qml', 'TintedIcon.qml'):
   shutil.copyfile(source/name, root/name)
  shutil.copytree(source/'assets', root/'assets')
  namespace=root/'qs'; namespace.mkdir()
@@ -94,26 +94,32 @@ Timer {interval:1700;running:true;onTriggered:{require(s.providers.map(p=>p.id).
  mock='''QtObject {
   id:host
   property var catalog: CATALOG
-  property var preferences: ({providerOrder:["claude","codex"],providers:{claude:{display:"bar"},codex:{display:"bar"}},showCosts:true})
+  property var preferences: Providers.normalize(catalog, {})
   property var providers: []
   property double nowMs: Date.now()
   property int saves:0
   property bool reject:false
-  function savePreferences(value) { if(reject) return false; saves++; preferences=value; return true }
+  function savePreferences(value) { if(reject) return false; saves++; preferences=Providers.normalize(catalog,value); return true }
  }'''.replace('CATALOG',json.dumps(catalog))
- views=' '.join('SettingsView {id:'+id+';width:400;service:host;ink:"#222222";dim:"#555555";surface:"#ffffff";group:"#eeeeee";track:"#dddddd"}' for id in ('first','second'))
+ views=' '.join('SettingsView {id:'+id+';width:400;service:host;ink:"#222222";dim:"#555555"}' for id in ('first','second'))
  cases={
- 'settings-immediate':'''first.display("claude","panel");first.setCosts(false);first.reorder("codex",-1);
+ 'settings-toggle-memory':'''first.setShowInBar("claude",false);first.setProviderEnabled("claude",false);
+ require(first.preferences.providers.claude.display==="off" && !first.preferences.providers.claude.showInBar,"disabled-keeps-bar-choice");
+ var saves=host.saves;first.setShowInBar("claude",true);require(host.saves===saves,"disabled-bar-control");
+ first.begin();first.setProviderEnabled("claude",true);require(first.preferences.providers.claude.display==="panel","enable-restores-bar-choice");
+ first.setShowInBar("claude",true);first.setProviderEnabled("claude",false);first.setProviderEnabled("claude",true);
+ require(second.preferences.providers.claude.display==="bar","enable-restores-visible-choice");''',
+ 'settings-immediate':'''first.setShowInBar("claude",false);first.setCosts(false);first.reorder("codex",-1);
  require(host.saves===3,"saved-on-change");require(second.preferences.providers.claude.display==="panel" && !second.preferences.showCosts && second.preferences.providerOrder[0]==="codex","shared-view");
  var saves=host.saves;first.done();first.begin();require(host.saves===saves && !first.preferences.showCosts,"done-keeps-changes");''',
- 'settings-rejection':'''host.reject=true;first.display("claude","off");first.setCosts(false);first.reorder("codex",-1);
+ 'settings-rejection':'''host.reject=true;first.setProviderEnabled("claude",false);first.setCosts(false);first.reorder("codex",-1);
  require(host.saves===0 && first.error!=="","save-error");require(first.preferences.providers.claude.display==="bar" && first.preferences.showCosts && first.preferences.providerOrder[0]==="claude","saved-values-retained");
- host.reject=false;first.display("claude","off");require(first.error==="" && second.preferences.providers.claude.display==="off","retry");''',
- 'settings-concurrent':'''second.setCosts(false);second.reorder("codex",-1);first.display("claude","off");
+ host.reject=false;first.setProviderEnabled("claude",false);require(first.error==="" && second.preferences.providers.claude.display==="off","retry");''',
+ 'settings-concurrent':'''second.setCosts(false);second.reorder("codex",-1);first.setProviderEnabled("claude",false);
  require(!host.preferences.showCosts && host.preferences.providerOrder[0]==="codex" && host.preferences.providers.claude.display==="off","other-view-changes-preserved");'''
  }
  for mode,actions in cases.items():
-  (root/'shell.qml').write_text('import QtQuick\nimport Quickshell\nShellRoot { '+mock+' Item {'+views+'} function require(value,message) {if(!value) throw new Error(message)} Timer {interval:300;running:true;onTriggered:{try{first.begin();second.begin();'+actions+'console.log("FIXTURE_SETTINGS_PASSED");Qt.quit()}catch(e){console.log("UNEXPECTED_"+e);Qt.exit(3)}}} Timer {interval:3000;running:true;onTriggered:Qt.exit(4)} }')
+  (root/'shell.qml').write_text('import QtQuick\nimport Quickshell\nimport "Providers.js" as Providers\nShellRoot { '+mock+' Item {'+views+'} function require(value,message) {if(!value) throw new Error(message)} Timer {interval:300;running:true;onTriggered:{try{first.begin();second.begin();'+actions+'console.log("FIXTURE_SETTINGS_PASSED");Qt.quit()}catch(e){console.log("UNEXPECTED_"+e);Qt.exit(3)}}} Timer {interval:3000;running:true;onTriggered:Qt.exit(4)} }')
   result=subprocess.run(['/usr/bin/quickshell','-p',str(root/'shell.qml')],env=settings_env,capture_output=True,text=True,timeout=5)
   output=result.stdout+result.stderr
   if result.returncode or 'FIXTURE_SETTINGS_PASSED' not in output or 'UNEXPECTED_' in output or 'TypeError' in output or 'ReferenceError' in output: print(mode,output);raise SystemExit(1)

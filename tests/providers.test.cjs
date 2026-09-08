@@ -46,3 +46,15 @@ test('oversized order settings fall back to the bounded catalog', () => {
   const settings=api.normalize(catalog,{providerOrder:Array(1000).fill('codex')});
   assert.deepEqual(plain(settings.providerOrder),['claude','codex']);
 });
+
+test('legacy visibility migrates and disabled providers retain their top-bar choice', () => {
+  for (const mode of ['bar','panel','off']) {
+    const saved = api.normalize(catalog, {providers:{claude:{display:mode}}});
+    assert.equal(saved.providers.claude.display, mode);
+    assert.equal(saved.providers.claude.showInBar, mode !== 'panel');
+    assert.deepEqual(plain(api.normalize(catalog, plain(saved))), plain(saved));
+  }
+  const saved = api.normalize(catalog, {providers:{claude:{display:'off',showInBar:false}}});
+  assert.equal(api.normalize(catalog, plain(saved)).providers.claude.showInBar, false);
+  assert.deepEqual(plain(api.selected(catalog, saved, false, false)), ['codex']);
+});

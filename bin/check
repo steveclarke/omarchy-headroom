@@ -34,7 +34,7 @@ with tempfile.TemporaryDirectory(prefix='headroom-lint-') as temp:
     probe = subprocess.run(command + [str(control)], capture_output=True, text=True)
     if not unexpected(probe.stdout + probe.stderr):
         raise SystemExit('QML lint positive control failed')
-    result = subprocess.run(command + ['BarWidget.qml', 'Panel.qml', 'Service.qml', 'TintedIcon.qml', 'CollectorProcess.qml', 'SettingsView.qml', 'PillButton.qml'], capture_output=True, text=True)
+    result = subprocess.run(command + ['BarWidget.qml', 'Panel.qml', 'Service.qml', 'TintedIcon.qml', 'CollectorProcess.qml', 'SettingsView.qml'], capture_output=True, text=True)
     findings = unexpected(result.stdout + result.stderr)
     if findings or result.returncode not in (0, 255):
         print(result.stdout + result.stderr)

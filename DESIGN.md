@@ -1,135 +1,72 @@
 ---
 name: Headroom
-description: A compact native desktop instrument for usage costs and remaining allowance.
+description: A native Omarchy panel for remaining allowance and estimated usage costs.
 colors:
   cost-claude: "#d77b5f"
   cost-codex: "#279b80"
 typography:
   body:
-    fontFamily: "sans-serif"
+    fontFamily: "monospace"
 ---
 
 # Design System: Headroom
 
-## Overview
+## Direction
 
-**Creative North Star: "A compact desktop usage instrument"**
+Headroom follows the installed Omarchy shell. The panel is flat, with the native popup border and corner radius, shared fonts, buttons, switches and separators. It keeps the usage information together in one column. The bar remains compact, with monochrome provider marks and weekly percentages.
 
-Headroom is a Linux Omarchy plugin built with Quickshell and QML. Its visual language combines monochrome provider marks, soft grouped surfaces, clear sans-serif labels, and thin accent meters. The bar is compact; the popup gives the figures enough space to read together.
+`Panel.qml`, `SettingsView.qml` and `BarWidget.qml` are the visual source of truth. Native expressions are recorded in [.impeccable/design.json](.impeccable/design.json). The font family in frontmatter is the shell's default alias; live controls bind to `Style.font.family` so changes follow the desktop.
 
-The native shell supplies theme colors, scaling, and panel behavior. `Panel.qml`, `BarWidget.qml`, and `TintedIcon.qml` are the visual source of truth. The frontmatter records fixed primitives only; native expressions and component metadata live in [.impeccable/design.json](.impeccable/design.json).
+## Theme and geometry
 
-**Key Characteristics:**
+- `KeyboardPanel` owns the popup background, border, corner radius, padding, focus, placement and dismissal. Do not override its internal card or suppress its border.
+- Panel colors use `Color.popups.background` and `Color.popups.text`. No light-theme whitening or inset-card backgrounds. The outline follows `Color.popups.border` and the native border specification, rather than a fixed blue.
+- Text uses `Style.font.family` and the shared body, bodySmall, title, heading and display sizes. Layout uses `Style.spacing` and `Style.space()`.
+- Content width is fitted from `Style.space(400)`, and height from the content with a `Style.space(1000)` cap. A vertical Flickable handles shorter screens.
+- Provider sections and the footer use `PanelSeparator`. Quotas sit directly on the panel, without separate cards. Major gaps use `Style.spacing.panelGap`.
+- Buttons, period choices and switches use `qs.Ui.Button` and `Toggle`. The shell owns their corners, hover, focus, selected and pressed styles. Settings and Refresh retain their native gear and refresh glyphs.
 
-- Rounded outer surface with quiet inset groups.
-- Strong headings and amounts, subdued supporting text.
-- Provider color confined to the cost split; shared theme accent for healthy allowance, yellow and red for warnings.
-- Explicit text for unavailable readings, resets, and forecast warnings.
+## Colors and readability
 
-## Colors
+Healthy quotas use `Color.accent`, warnings use yellow, and urgent limits start from `Color.urgent`. Tracks use `Style.selectedFillFor(foreground, Color.accent)`. Cost-ring colors identify providers and never color quota groups.
 
-The palette follows the active Omarchy theme, with two fixed colors for the cost legend and ring.
+Supporting text and urgency colors are adjusted toward the foreground to seek a calculated contrast ratio of at least 4.65 against the panel surface. Caution meters use `#c49a16` on light surfaces and `#edc35b` on dark surfaces. The hourglass uses `#916900` on light surfaces and the caution color on dark surfaces. Text and icons accompany all warning colors.
 
-### Primary
+## Bar
 
-Healthy quota fills use `Color.accent`, shared by both providers. A tight projected buffer uses yellow; a limit warning uses the urgency color. `Pace.severity()` owns the state and `meterColor()` maps it to these roles.
+Each selected provider has a monochrome mark and weekly percentage remaining, using the native WidgetButton font and bar icon tokens. Summaries are horizontal with a plain gap; they stack on a vertical bar. There is no separator, hover tooltip or hover-opened panel. The hand cursor indicates clickability. Left-click opens details; right-click refreshes. A Headroom label keeps settings reachable when no provider is shown in the bar.
 
-### Secondary
+Stale readings add `!`; an urgent or exhausted weekly forecast adds a flame. Missing percentages show an em dash. The native open indicator follows the visible content width.
 
-The warm coral `cost-claude` and green teal `cost-codex` identify providers in the cost ring and matching legend dots. Provider names and exact amounts accompany the colors.
+## Quota details
 
-### Neutral
+All enabled providers appear together, in the chosen order. A monochrome mark, provider name and subdued plan introduce each section. Session, Weekly and reported model-specific limits remain visible together. Each row has its title and conditional warning, a thin meter, remaining percentage, and reset countdown.
 
-Popup text uses `Color.popups.text`. The popup surface uses `Color.popups.background`, mixed 68% toward white when its HSL lightness exceeds 0.5. Inset groups mix that surface 3.5% toward the foreground; meter tracks mix the group 14% toward the foreground. The period-selector bed uses a quieter 5.5% group-to-foreground mix.
+Meters are `Style.space(6)` high. Their ends follow the native corner radius, capped at half the track height. Plan names and quota titles can elide; status and reset text wrap. The warning takes priority over the quota title when width is tight.
 
-Secondary text begins with a foreground-to-surface mix. `legible()` adjusts it toward the foreground against the selector bed; urgency uses the same adjustment against the group. The function seeks a calculated contrast ratio of at least 4.65, with the popup foreground as its fallback. Theme-derived colors remain expressions, not captured light/dark hex palettes.
+- Healthy forecasts with at least 10% projected spare show no permanent note or marker; hover reveals the projection.
+- A smaller buffer rounding to at least 1% shows a yellow meter, hourglass and `~N% spare` beside the title.
+- A buffer rounding to zero, or exhaustion projected before reset, shows a red meter and flame. A meaningful exhaustion estimate accompanies the flame; zero remaining reads `Limit reached`.
+- Caution and urgent forecasts show the even-pace tick. Healthy, exhausted, stale and unavailable readings do not.
+- Early readings below 5% usage suppress extrapolated alarms. Without a usable projection, fresh readings use absolute usage bands: yellow at 80% used, red at 90%, without a forecast note.
+- Missing or expired values show an em dash and empty track. Stale unexpired values retain numbers with 0.4 fill opacity, a status, and no forecast.
 
-Caution is a meter color: `#c49a16` on a light surface and `#edc35b` on a dark surface. Urgency starts from `Color.urgent`. Warning text stays secondary; the flame takes the urgency color. The spare-buffer hourglass uses `#916900` on light surfaces and the caution color on dark surfaces for legibility. The bar uses `WidgetButton.foreground`, including the shell's wallpaper-aware contrast, and the bar's urgent color for flame warnings.
+Warning icons use `Style.font.heading` (16 at the default size) for recognition, with a 4-unit text gap. Forecast text is secondary and normal weight. Hover explains the average-use basis.
 
-**The Separate Roles Rule.** Cost colors identify providers. Quota color communicates capacity state; the fill length always measures remaining allowance. Warning labels use secondary text.
+## Costs
 
-## Typography
+The optional Cost section retains Today, Yesterday and 30 Days as native button-group choices, followed by the ring and provider legend. The information icon explains that these are estimated API-equivalent USD values from this machine, not subscription charges. 30 Days includes today and the previous 29 calendar days.
 
-Panel labels use Qt's `sans-serif` family. Normal and `Font.DemiBold` weights create hierarchy without a second text family. All sizes below are arguments to `Style.space()`, not fixed CSS pixels.
+The ring uses a 134-unit canvas with a 24-unit stroke. Its total is rounded to whole dollars; named legend amounts show two decimals. Missing amounts make the combined total unavailable and leave the ring neutral. Fresh zeros remain zero. A text status distinguishes loading, unavailable and outdated costs. There are no usage trends, token charts or Extra Usage rows.
 
-| Role | QML size | Weight and use |
-|---|---|---|
-| Cost total | `Style.space(20)` | DemiBold; center of the ring |
-| Section heading | `Style.space(18)` | DemiBold; Cost and provider names |
-| Quota title | `Style.space(16)` | DemiBold; window names |
-| Body | `Style.space(14)` | Normal; remaining allowance and legend labels |
-| Compact label | `Style.space(13)` | Periods, plans, resets, and exact costs; selected period is DemiBold |
-| Supporting text | `Style.space(11)`–`Style.space(12)` | Units, status, forecasts, and Refresh; pill actions use DemiBold |
+## Settings
 
-Bar percentages inherit the native `WidgetButton` font family and `Style.font.body` size, with normal weight and native text rendering. Provider marks use `Style.bar.iconCanvas`; warning glyphs use `Style.bar.iconFont` in the same icon canvas. These shared values honor the shell font and bar-size settings. Percentages are right-aligned in a width measured from `100%`. The ring total and legend amounts can shrink to fit. Plan names and quota titles elide; status and reset text can wrap. Forecast warnings stay on the title line, with the title yielding space to the warning.
+Settings replaces the detail content inside the same panel. Each provider has a native switch beside its name and a subordinate **Show weekly usage in top bar** switch. The first enables collection and the click-open details; the second controls the weekly bar summary. Disabling a provider stops its workers, disables the subordinate switch, and retains its top-bar choice for re-enabling. Existing display settings migrate without changing visibility.
 
-## Layout
+Reorder arrows apply one order to the bar, quota sections and cost legend. A native **Show cost estimates** switch controls costs and their workers. All changes save immediately across monitors; the actual bar updates while settings stays open. A rejected save retains the saved selection and shows an error.
 
-The popup is one column. `KeyboardPanel` requests content width `Style.space(400)`, fits it to the available area, and fits content height with a `Style.space(1000)` maximum. Its padding is `Style.space(18)`. A clipped vertical `Flickable` supplies scrolling when the content is taller than the available space; there is no separate breakpoint layout.
+Tab walks settings controls, Space activates them, and Done or Escape returns to details while keeping changes. Reordering restores settings focus; other changes preserve the focused control. S opens settings. Outside settings, the shell owns Tab panel switching and Escape dismissal; R or activation refreshes, arrows scroll/select periods, and 1–3 select cost periods.
 
-Major sections are separated by `Style.space(22)`. Cost content has `Style.space(14)` insets; provider groups have `Style.space(16)` insets and `Style.space(22)` between quota rows. These are component measurements, not a new global spacing scale.
+## Verification
 
-The cost group places the three-period selector above a ring and an aligned provider legend. Each provider heading sits outside its inset quota group. Inside a quota row, the order is title with any warning right-aligned alongside it, meter, then remaining percentage on the left with reset on the right. There is no forecast row beneath those figures. The footer pairs update status with Settings and Refresh.
-
-The bar shows the chosen provider summaries horizontally with space between them and no divider. On a vertical bar they stack. When none are chosen for the bar, a native-sized Headroom label keeps the panel reachable.
-
-## Elevation & Depth
-
-The plugin adds no custom shadow. Depth comes from the outer surface, subtly contrasting inset groups, and the selected period's surface-colored pill. Groups have no outline; `KeyboardPanel` uses `Border.none()`.
-
-Positioning, focus, dismissal, and panel transitions belong to the native shell. Guarded `Binding` objects style only the current native panel instance's background and corner radius. Preserve that ownership when changing the appearance.
-
-## Shapes
-
-The outer popup has a `Style.space(18)` corner radius. Cost and provider groups use `Style.space(14)`. Period controls, Refresh, and meter ends are fully rounded using half their height. Meters are thin (`Style.space(6)`). Caution and urgent forecasts add a `Style.space(2)` even-pace marker, extending `Style.space(2)` above and below the track. It uses 55% foreground mixed into the group and sits at the remaining fraction of the time window. Healthy, exhausted, stale and unavailable readings have no marker.
-
-The cost ring is drawn in a `Style.space(134)` square with a `Style.space(24)` stroke. Small gaps separate nonzero provider segments. Local SVG assets supply the monochrome provider marks and information icon through `TintedIcon`.
-
-## Components
-
-### Weekly bar summary
-
-Each provider has a monochrome mark and its weekly percentage remaining. Session values belong in the popup. A stale reading adds `!`; an urgent or exhausted weekly forecast adds a flame. Left-click toggles the native panel; right-click refreshes. The native open-panel indicator follows the visible content width.
-
-The bar has no hover tooltip or hover-opened panel. The native hand cursor signals that the summary is clickable; clicking opens the full detail panel. Weekly percentages and urgent markers remain visible at a glance.
-
-### Cost summary
-
-Today, Yesterday, and 30 Days select local estimated API-equivalent value in USD. The information icon's tooltip and accessible name explain the meaning. 30 Days includes today and the previous 29 calendar days.
-
-The selected pill moves over 150 ms with `Easing.OutCubic`. Selected text is DemiBold; selected and hovered labels use the foreground while other labels use secondary text. Left/right arrows and keys 1–3 also select periods.
-
-The ring total is rounded to whole dollars; the adjacent provider amounts show two decimal places. A missing provider amount makes the combined total unavailable and leaves the ring neutral. Fresh zero values remain zero. A text status beneath the group distinguishes estimated local usage, loading, missing data, and outdated costs. `Costs.js` owns these distinctions.
-
-### Provider quota group
-
-A monochrome provider mark, heading, and subdued plan label introduce each group. Session, Weekly, and reported model-specific windows appear together. The meter represents allowance remaining, followed by a textual percentage and reset countdown.
-
-Healthy forecasts with at least 10% projected spare have no visible note or marker. Hovering the meter reveals the projection. A smaller buffer that rounds to at least 1% shows a yellow meter and an amber hourglass beside a normal-weight secondary `~N% spare` note on the title line. A buffer that rounds to zero, or projected exhaustion before reset, shows a red meter and flame; a meaningful exhaustion estimate accompanies the flame. A displayed zero remaining shows `Limit reached`. Warning icons use the native Nerd Font library at `Style.space(16)`, vertically centered alongside the supporting text with a `Style.space(4)` gap. Warning text stays secondary and normal weight. Forecast tooltips explain the average-use basis.
-
-Very early readings below 5% usage suppress extrapolated alarms. Without a usable projection, fresh readings use absolute rounded-usage bands: yellow at 80% used and red at 90%, without a pacing note or marker. Missing or expired percentages use an em dash and an empty meter. Stale unexpired readings retain their numbers with reduced fill opacity (0.4), an explicit status, and no forecast.
-
-### Provider settings
-
-Settings replaces the detail content inside the same native panel. Provider groups retain the quiet inset surfaces, with name and reorder arrows above three pills: Bar + panel, Panel only, and Off. A native toggle controls cost estimates. Changes apply and save immediately; controls reflect the shared saved preferences. A rejected change shows an error without displaying an unsaved selection. Off stops collection; Panel only keeps collection running. Provider order also controls the cost legend. Tab walks settings controls; Done and Escape return to details and keep changes. The bar updates while settings stays open; panel-only changes appear on returning to details. S opens settings from the detail panel.
-
-### Native panel controls
-
-Settings and Refresh are compact pills with native gear and refresh glyphs beside their labels. Icons use the native font at `Style.space(14)` with a `Style.space(6)` gap; each button sizes to its contents and retains a text accessible name. Pills use the group color at rest and track color on hover; both icon and text dim while disabled. The footer reports updating status or the normal refresh cadence and identifies sample data when enabled. `R` and native keyboard activation refresh; up/down moves through scrollable content. Escape dismisses and Tab uses the shell's panel-switching behavior through `PanelKeyCatcher`.
-
-## Do's and Don'ts
-
-### Do:
-
-- **Do** keep theme colors and `Style.space()` expressions live.
-- **Do** retain text, units, and accessible names alongside charts, colors, and icons.
-- **Do** distinguish missing, stale, expired, and zero readings.
-- **Do** preserve the native panel lifecycle and keyboard controls.
-- **Do** use synthetic data and identify it in previews.
-
-### Don't:
-
-- **Don't** hardcode the captured blue accent or a captured light/dark palette.
-- **Don't** use cost colors to tint provider quota groups or add permanent healthy forecast text.
-- **Don't** add provider tabs, Extra Usage, or Usage Trend sections to this widget.
-- **Don't** put every quota row in a separate card or add decorative animation.
+Use synthetic usage for captures. Check both light and dark palettes, missing and stale readings, warning states, costs and settings, native keyboard behavior, and saved choices. Never publish private account data or surrounding desktop content. Preserve shared shell styling rather than changing global settings to accommodate Headroom.
