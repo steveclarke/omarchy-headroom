@@ -43,7 +43,7 @@ function normalize(items, raw) {
     // Retain the top-bar choice while disabled; legacy display values still work.
     modes[id] = {display: mode, showInBar: mode === "off" ? p.showInBar !== false : mode === "bar"}
   })
-  return {providerOrder: order, providers: modes, showCosts: raw.showCosts !== false}
+  return {providerOrder: order, providers: modes, showCosts: raw.showCosts !== false, costPosition: Number.isInteger(raw.costPosition) ? Math.max(0, Math.min(order.length, raw.costPosition)) : 0}
 }
 
 function selected(items, preferences, barOnly, costsOnly) {
@@ -57,11 +57,20 @@ function mergedEntry(existing, preferences) {
   return Object.assign({}, existing, preferences)
 }
 
+// Cost is a panel section, never a provider or a collector ID.
+function panelOrder(preferences) {
+  var order = preferences.providerOrder.slice()
+  order.splice(preferences.costPosition || 0, 0, "cost")
+  return order
+}
+
 // Move relative to an ID so refreshes and hidden providers cannot change the target.
 function reordered(preferences, id, targetId, after) {
-  var next = JSON.parse(JSON.stringify(preferences)), order = next.providerOrder
+  var next = JSON.parse(JSON.stringify(preferences)), order = panelOrder(next)
   if (id === targetId || order.indexOf(id) < 0 || order.indexOf(targetId) < 0) return next
   order.splice(order.indexOf(id), 1)
   order.splice(order.indexOf(targetId) + (after ? 1 : 0), 0, id)
+  next.providerOrder = order.filter(function(value) { return value !== "cost" })
+  next.costPosition = order.indexOf("cost")
   return next
 }

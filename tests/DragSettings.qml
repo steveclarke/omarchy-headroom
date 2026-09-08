@@ -65,6 +65,22 @@ Item {
       compare(host.preferences.providerOrder.join(","),"claude,codex")
       verify(view.error!=="")
     }
+    function test_cost_drag_and_visibility() {
+      var handle=findChild(view,"reorder-cost"), other=findChild(view,"reorder-codex")
+      var end=other.mapToItem(view,other.width/2,other.height+50)
+      mousePress(handle,handle.width/2,handle.height/2)
+      mouseMove(view,end.x,end.y,40,Qt.LeftButton)
+      compare(host.saves,0)
+      mouseRelease(view,end.x,end.y);wait(30)
+      compare(Providers.panelOrder(host.preferences).join(","),"claude,codex,cost")
+      view.setCosts(false);wait(30)
+      verify(findChild(view,"reorder-cost")!==null)
+      view.setCosts(true);wait(30)
+      compare(host.preferences.costPosition,2)
+      findChild(view,"reorder-cost").forceActiveFocus()
+      keyClick(Qt.Key_Up);wait(30)
+      compare(Providers.panelOrder(host.preferences).join(","),"claude,cost,codex")
+    }
     function test_keyboard_reorders() {
       findChild(view,"reorder-codex").forceActiveFocus()
       keyClick(Qt.Key_Up);wait(30)

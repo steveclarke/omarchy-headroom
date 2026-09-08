@@ -84,6 +84,22 @@ ShellRoot {
       mouseRelease(surface,end.x,end.y);wait(50)
       compare(data.preferences.providerOrder.join(","),"codex,claude")
     }
+    function test_cost_main_drag() {
+      data.preferences=Providers.normalize(data.catalog,{providers:{claude:{display:"off"}}})
+      wait(100)
+      var handle=findHandle("cost"),other=findHandle("codex")
+      verify(handle!==null);verify(other!==null)
+      var surface=handle.QsWindow.window.contentItem[0]
+      var end=other.mapToItem(surface,other.width/2,other.height+70)
+      mousePress(handle,handle.width/2,handle.height/2)
+      mouseMove(surface,end.x,end.y,50,Qt.LeftButton)
+      compare(data.preferences.costPosition,0)
+      mouseRelease(surface,end.x,end.y);wait(50)
+      compare(Providers.panelOrder(data.preferences).join(","),"claude,codex,cost")
+      handle=findHandle("cost")
+      handle.forceActiveFocus();keyClick(Qt.Key_Up);wait(50)
+      compare(Providers.panelOrder(data.preferences).join(","),"claude,cost,codex")
+    }
     function test_main_down() {perform("claude","codex")}
     function test_main_up() {perform("codex","claude")}
   }

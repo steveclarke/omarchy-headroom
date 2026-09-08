@@ -12,7 +12,7 @@ Column {
   required property color dim
   readonly property var preferences: service ? service.preferences : Providers.normalize([], {})
   // Changing a switch must not rebuild the focused provider controls.
-  readonly property string orderKey: preferences.providerOrder.join(",")
+  readonly property string orderKey: Providers.panelOrder(preferences).join(",")
   property string error: ""
   signal done()
   onVisibleChanged: if (!visible) orderDrag.cancel()
@@ -84,7 +84,7 @@ Column {
       z: orderDrag.dragged === providerRow && orderDrag.active ? 1 : 0
       opacity: orderDrag.active && orderDrag.dragged !== providerRow ? 0.45 : 1
       transform: Translate { y: orderDrag.dragged === providerRow ? orderDrag.offset : 0 }
-      readonly property var meta: Providers.find(root.service.catalog, modelData)
+      readonly property var meta: modelData === "cost" ? {name: "Cost"} : Providers.find(root.service.catalog, modelData)
       readonly property var preference: root.preferences.providers[modelData]
       width: root.width
       height: providerLayout.implicitHeight
@@ -105,18 +105,19 @@ Column {
           SwitchRow {
             width: parent.width - grip.width - parent.spacing
             label: providerRow.meta.name
-            description: root.status(providerRow.modelData)
-            checked: providerRow.preference.display !== "off"
+            description: providerRow.modelData === "cost" ? "Today, Yesterday and 30 Days" : root.status(providerRow.modelData)
+            checked: providerRow.modelData === "cost" ? root.preferences.showCosts : providerRow.preference.display !== "off"
             Accessible.name: "Enable " + providerRow.meta.name
-            onClicked: root.setProviderEnabled(providerRow.modelData, !checked)
+            onClicked: providerRow.modelData === "cost" ? root.setCosts(!checked) : root.setProviderEnabled(providerRow.modelData, !checked)
           }
         }
         SwitchRow {
+          visible: providerRow.modelData !== "cost"
           x: Style.space(24) + Style.spacing.sm
           width: parent.width - x
           label: "Show weekly usage in top bar"
-          checked: providerRow.preference.showInBar
-          enabled: providerRow.preference.display !== "off"
+          checked: !!providerRow.preference && providerRow.preference.showInBar
+          enabled: !!providerRow.preference && providerRow.preference.display !== "off"
           Accessible.name: providerRow.meta.name + ": " + label
           onClicked: root.setShowInBar(providerRow.modelData, !checked)
         }
@@ -124,13 +125,6 @@ Column {
     }
   }
   PanelSeparator { foreground: root.ink }
-  SwitchRow {
-    width: parent.width
-    label: "Show cost estimates"
-    description: "Today, Yesterday and 30 Days"
-    checked: root.preferences.showCosts
-    onClicked: root.setCosts(!checked)
-  }
   Label { width: parent.width; visible: root.error !== ""; text: root.error; wrapMode: Text.WordWrap }
   Ui.Button {
     anchors.right: parent.right

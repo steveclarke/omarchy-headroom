@@ -126,52 +126,85 @@ Panel {
             text: !root.service || !root.service.catalog.length ? "Headroom is unavailable. Check its installation." : "No providers enabled. Choose providers in Settings."
             wrapMode: Text.WordWrap
           }
-          Column {
-            visible: !root.settingsOpen && root.costProviders.length > 0
-            width: parent.width
-            spacing: Style.space(10)
-            Row {
-              spacing: Style.space(8)
-              Label { text: "Cost"; font.pixelSize: Style.font.heading; font.weight: Font.DemiBold }
-              TintedIcon {
-                anchors.verticalCenter: parent.verticalCenter
-                width: Style.space(14); height: width
-                iconSource: Qt.resolvedUrl("assets/info.svg")
-                ink: root.dim
-                Accessible.role: Accessible.StaticText
-                Accessible.name: "Costs are estimated API-equivalent usage value in USD from this machine's local history, not subscription charges."
-                MouseArea {
-                  anchors.fill: parent; hoverEnabled: true
-                  onEntered: if (root.bar) root.bar.showTooltip(this, "Estimated API-equivalent value in USD.\nLocal history on this machine; not subscription charges.\n30 Days includes today and the previous 29 calendar days.")
-                  onExited: if (root.bar) root.bar.hideTooltip(this)
-                }
-              }
-            }
+          Repeater {
+            id: providerRepeater
+            model: root.settingsOpen || !root.service ? [] : Providers.panelOrder(root.service.preferences).filter(function(id) {
+              return id === "cost" ? root.costProviders.length > 0 : !!Providers.find(root.providers, id)
+            })
             Item {
-              width: parent.width
-              height: costContent.implicitHeight
+              id: providerGroup
+              required property string modelData
+              required property int index
+              readonly property string providerId: modelData
+              readonly property var provider: Providers.find(root.providers, modelData) || {windows: [], icon: "", shortName: "", plan: ""}
+              z: detailDrag.dragged === providerGroup && detailDrag.active ? 1 : 0
+              opacity: detailDrag.active && detailDrag.dragged !== providerGroup ? 0.45 : 1
+              transform: Translate { y: detailDrag.dragged === providerGroup ? detailDrag.offset : 0 }
+              width: content.width
+              height: sectionLayout.implicitHeight
+              Rectangle { anchors.fill: parent; color: root.surface; visible: detailDrag.dragged === providerGroup && detailDrag.active }
               Column {
-                id: costContent
+                id: sectionLayout
                 width: parent.width
-                spacing: Style.space(16)
-                Row {
-                  spacing: Style.spacing.md
-                  Repeater {
-                    model: ["Today", "Yesterday", "30 Days"]
-                    Ui.Button {
-                      required property string modelData
-                      required property int index
-                      text: modelData
-                      selected: root.period === index
-                      bordered: true
-                      foreground: root.foreground
-                      background: root.surface
-                      Accessible.role: Accessible.PageTab
-                      Accessible.name: text
-                      Accessible.selected: selected
-                      Accessible.description: "Cost period. Use left/right arrows or keys 1, 2, 3."
-                      onClicked: root.selectPeriod(index)
-                    }
+                spacing: Style.spacing.panelGap
+                PanelSeparator { visible: providerGroup.index > 0; foreground: root.foreground }
+                Loader {
+                  width: parent.width
+                  active: providerGroup.providerId === "cost"
+                  visible: active
+                  sourceComponent: Component {
+                    Column {
+                      id: costLayout
+                      width: providerGroup.width
+                      spacing: Style.space(10)
+                      Row {
+                        ProviderDragHandle {
+                          objectName: "reorder-main-cost"
+                          reorder: detailDrag; providerItem: providerGroup; providerName: "Cost"
+                          ink: root.dim
+                          anchors.verticalCenter: parent.verticalCenter
+                        }
+                        spacing: Style.space(8)
+                        Label { text: "Cost"; font.pixelSize: Style.font.heading; font.weight: Font.DemiBold }
+                        TintedIcon {
+                          anchors.verticalCenter: parent.verticalCenter
+                          width: Style.space(14); height: width
+                          iconSource: Qt.resolvedUrl("assets/info.svg")
+                          ink: root.dim
+                          Accessible.role: Accessible.StaticText
+                          Accessible.name: "Costs are estimated API-equivalent usage value in USD from this machine's local history, not subscription charges."
+                          MouseArea {
+                            anchors.fill: parent; hoverEnabled: true
+                            onEntered: if (root.bar) root.bar.showTooltip(this, "Estimated API-equivalent value in USD.\nLocal history on this machine; not subscription charges.\n30 Days includes today and the previous 29 calendar days.")
+                            onExited: if (root.bar) root.bar.hideTooltip(this)
+                          }
+                        }
+                      }
+                      Item {
+                        width: parent.width
+                        height: costContent.implicitHeight
+                        Column {
+                          id: costContent
+                          width: parent.width
+                          spacing: Style.space(16)
+                          Row {
+                            spacing: Style.spacing.md
+                            Repeater {
+                              model: ["Today", "Yesterday", "30 Days"]
+                              Ui.Button {
+                                required property string modelData
+                                required property int index
+                                text: modelData
+                                selected: root.period === index
+                                bordered: true
+                                foreground: root.foreground
+                                background: root.surface
+                                Accessible.role: Accessible.PageTab
+                                Accessible.name: text
+                                Accessible.selected: selected
+                                Accessible.description: "Cost period. Use left/right arrows or keys 1, 2, 3."
+                                onClicked: root.selectPeriod(index)
+                              }
                   }
                 }
                 Item {
@@ -270,167 +303,162 @@ Panel {
               wrapMode: Text.WordWrap
             }
           }
-          Repeater {
-            id: providerRepeater
-            model: root.settingsOpen ? [] : root.providers
-            Item {
-              id: providerGroup
-              required property var modelData
-              required property int index
-              readonly property string providerId: modelData.id
-              z: detailDrag.dragged === providerGroup && detailDrag.active ? 1 : 0
-              opacity: detailDrag.active && detailDrag.dragged !== providerGroup ? 0.45 : 1
-              transform: Translate { y: detailDrag.dragged === providerGroup ? detailDrag.offset : 0 }
-              width: content.width
-              height: providerLayout.implicitHeight
-              Rectangle { anchors.fill: parent; color: root.surface; visible: detailDrag.dragged === providerGroup && detailDrag.active }
-              Column {
-                id: providerLayout
-                width: parent.width
-                spacing: Style.spacing.panelGap
-                PanelSeparator { visible: providerGroup.index > 0 || root.costProviders.length > 0; foreground: root.foreground }
-                Item {
-                  width: parent.width
-                  height: providerHeader.implicitHeight
-                  Row {
-                    id: providerHeader
-                    x: Style.space(28)
-                    width: parent.width - x
-                    spacing: Style.space(7)
-                    TintedIcon {
-                      id: providerIcon
-                      iconSource: Qt.resolvedUrl("assets/" + providerGroup.modelData.icon); ink: root.dim
-                      width: Style.space(21); height: width
-                      anchors.verticalCenter: parent.verticalCenter
-                    }
-                    Label {
-                      id: providerName
-                      text: providerGroup.modelData.shortName
-                      font.pixelSize: Style.font.heading; font.weight: Font.DemiBold
-                      anchors.verticalCenter: parent.verticalCenter
-                    }
-                    Label {
-                      width: Math.max(0, parent.width - providerName.width - providerIcon.width - Style.space(21))
-                      text: providerGroup.modelData.plan
-                      elide: Text.ElideRight
-                      anchors.baseline: providerName.baseline
-                      color: root.dim; font.pixelSize: Style.font.body
-                    }
-                  }
-                  ProviderDragHandle {
-                    objectName: "reorder-main-" + providerGroup.providerId
-                    width: parent.width; height: parent.height
-                    reorder: detailDrag; providerItem: providerGroup; providerName: providerGroup.modelData.shortName
-                    ink: root.dim
                   }
                 }
-                Item {
+                Loader {
                   width: parent.width
-                  height: quotas.implicitHeight
-                  Column {
-                    id: quotas
-                    width: parent.width
-                    spacing: Style.spacing.panelGap
-                    Label {
+                  active: providerGroup.providerId !== "cost"
+                  visible: active
+                  sourceComponent: Component {
+                    Column {
+                      id: providerLayout
                       width: parent.width
-                      text: Model.message(providerGroup.modelData, root.now)
-                      visible: text !== ""
-                      wrapMode: Text.WordWrap
-                      color: root.dim; font.pixelSize: Style.font.bodySmall
-                    }
-                    Repeater {
-                      model: providerGroup.modelData.windows
-                      Column {
-                        id: metric
-                        required property var modelData
-                        width: quotas.width
-                        spacing: Style.space(5)
-                        readonly property var forecast: Pace.evaluate(modelData, providerGroup.modelData.observedAt, root.now, Model.fresh(providerGroup.modelData, root.now))
-                        readonly property string remaining: Model.percentage(modelData, root.now)
-                        readonly property bool flame: forecast !== null && (forecast.status === "urgent" || forecast.status === "exhausted")
-                        readonly property var paceMarker: Pace.marker(forecast)
-                        Accessible.role: Accessible.ProgressBar
-                        Accessible.name: modelData.title + ": " + remaining + " remaining. " + (flame && Pace.summary(forecast, root.now) === "" ? "Will reach limit" : Pace.summary(forecast, root.now))
-                        Item {
-                          width: parent.width
-                          height: Math.max(quotaTitle.height, warning.implicitHeight)
-                          Label {
-                            id: quotaTitle
-                            width: parent.width - (warning.visible ? warning.width + Style.space(10) : 0)
-                            text: metric.modelData.title === "Fable Weekly" ? "Fable" : metric.modelData.title
-                            elide: Text.ElideRight
-                            font.pixelSize: Style.font.title; font.weight: Font.DemiBold
-                          }
-                          Item {
-                            id: warning
-                            anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter
-                            implicitWidth: warningContents.implicitWidth
-                            implicitHeight: warningContents.implicitHeight
-                            visible: metric.flame || warningText.text !== ""
-                            Row {
-                              id: warningContents
-                              spacing: Style.space(4)
-                              Label {
-                                visible: metric.flame || (metric.forecast !== null && metric.forecast.status === "caution")
-                                text: metric.flame ? "󰈸" : "󰔟"
-                                color: metric.flame ? root.urgent : root.cautionIcon
-                                font.family: Style.font.family
-                                font.pixelSize: Style.font.heading
-                                anchors.verticalCenter: parent.verticalCenter
-                              }
-                              Label {
-                                id: warningText
-                                visible: text !== ""
-                                text: Pace.summary(metric.forecast, root.now)
-                                color: root.dim; font.pixelSize: Style.font.bodySmall
-                                anchors.verticalCenter: parent.verticalCenter
-                              }
-                            }
-                            MouseArea {
-                              anchors.fill: parent; hoverEnabled: true
-                              onEntered: if (root.bar) root.bar.showTooltip(this, Pace.tooltip(metric.forecast))
-                              onExited: if (root.bar) root.bar.hideTooltip(this)
-                            }
-                          }
-                        }
-                        Rectangle {
-                          width: parent.width; height: Style.space(6); radius: Math.min(Style.cornerRadius, height / 2)
-                          color: root.track
-                          Rectangle {
-                            width: metric.remaining === "—" ? 0 : parent.width * Math.max(0, Math.min(1, 1 - metric.modelData.used))
-                            height: parent.height; radius: parent.radius
-                            color: root.meterColor(Pace.severity(metric.modelData, metric.forecast, root.now, Model.fresh(providerGroup.modelData, root.now)))
-                            opacity: Model.fresh(providerGroup.modelData, root.now) ? 1 : 0.4
-                          }
-                          Rectangle {
-                            visible: metric.paceMarker !== null
-                            x: Math.max(0, Math.min(parent.width - width, parent.width * (1 - (metric.paceMarker || 0)) - width / 2))
+                      spacing: Style.spacing.panelGap
+                      Item {
+                        width: parent.width
+                        height: providerHeader.implicitHeight
+                        Row {
+                          id: providerHeader
+                          x: Style.space(28)
+                          width: parent.width - x
+                          spacing: Style.space(7)
+                          TintedIcon {
+                            id: providerIcon
+                            iconSource: Qt.resolvedUrl("assets/" + providerGroup.provider.icon); ink: root.dim
+                            width: Style.space(21); height: width
                             anchors.verticalCenter: parent.verticalCenter
-                            width: Style.space(2); height: parent.height + Style.space(4); radius: Style.space(1)
-                            color: root.mix(root.foreground, root.group, 0.45)
                           }
-                          MouseArea {
-                            anchors.fill: parent; anchors.margins: -Style.space(3)
-                            hoverEnabled: true
-                            onEntered: if (root.bar && metric.forecast) root.bar.showTooltip(this, Pace.tooltip(metric.forecast))
-                            onExited: if (root.bar) root.bar.hideTooltip(this)
+                          Label {
+                            id: providerName
+                            text: providerGroup.provider.shortName
+                            font.pixelSize: Style.font.heading; font.weight: Font.DemiBold
+                            anchors.verticalCenter: parent.verticalCenter
+                          }
+                          Label {
+                            width: Math.max(0, parent.width - providerName.width - providerIcon.width - Style.space(21))
+                            text: providerGroup.provider.plan
+                            elide: Text.ElideRight
+                            anchors.baseline: providerName.baseline
+                            color: root.dim; font.pixelSize: Style.font.body
                           }
                         }
-                        Item {
+                        ProviderDragHandle {
+                          objectName: "reorder-main-" + providerGroup.providerId
+                          width: parent.width; height: parent.height
+                          reorder: detailDrag; providerItem: providerGroup; providerName: providerGroup.provider.shortName
+                          ink: root.dim
+                        }
+                      }
+                      Item {
+                        width: parent.width
+                        height: quotas.implicitHeight
+                        Column {
+                          id: quotas
                           width: parent.width
-                          height: Math.max(remainingText.height, resetText.height)
+                          spacing: Style.spacing.panelGap
                           Label {
-                            id: remainingText
-                            text: metric.remaining + (metric.remaining === "—" ? "" : " left")
-                          }
-                          Label {
-                            id: resetText
-                            anchors.right: parent.right
-                            width: parent.width - remainingText.width - Style.space(10)
-                            horizontalAlignment: Text.AlignRight
-                            text: metric.modelData.resetAt > root.now ? "Resets in " + Pace.duration(metric.modelData.resetAt - root.now) : metric.modelData.resetAt > 0 ? "Awaiting reset update" : "Reset not reported"
+                            width: parent.width
+                            text: Model.message(providerGroup.provider, root.now)
+                            visible: text !== ""
                             wrapMode: Text.WordWrap
-                            color: root.dim; font.pixelSize: Style.font.body
+                            color: root.dim; font.pixelSize: Style.font.bodySmall
+                          }
+                          Repeater {
+                            model: providerGroup.provider.windows
+                            Column {
+                              id: metric
+                              required property var modelData
+                              width: quotas.width
+                              spacing: Style.space(5)
+                              readonly property var forecast: Pace.evaluate(modelData, providerGroup.provider.observedAt, root.now, Model.fresh(providerGroup.provider, root.now))
+                              readonly property string remaining: Model.percentage(modelData, root.now)
+                              readonly property bool flame: forecast !== null && (forecast.status === "urgent" || forecast.status === "exhausted")
+                              readonly property var paceMarker: Pace.marker(forecast)
+                              Accessible.role: Accessible.ProgressBar
+                              Accessible.name: modelData.title + ": " + remaining + " remaining. " + (flame && Pace.summary(forecast, root.now) === "" ? "Will reach limit" : Pace.summary(forecast, root.now))
+                              Item {
+                                width: parent.width
+                                height: Math.max(quotaTitle.height, warning.implicitHeight)
+                                Label {
+                                  id: quotaTitle
+                                  width: parent.width - (warning.visible ? warning.width + Style.space(10) : 0)
+                                  text: metric.modelData.title === "Fable Weekly" ? "Fable" : metric.modelData.title
+                                  elide: Text.ElideRight
+                                  font.pixelSize: Style.font.title; font.weight: Font.DemiBold
+                                }
+                                Item {
+                                  id: warning
+                                  anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter
+                                  implicitWidth: warningContents.implicitWidth
+                                  implicitHeight: warningContents.implicitHeight
+                                  visible: metric.flame || warningText.text !== ""
+                                  Row {
+                                    id: warningContents
+                                    spacing: Style.space(4)
+                                    Label {
+                                      visible: metric.flame || (metric.forecast !== null && metric.forecast.status === "caution")
+                                      text: metric.flame ? "󰈸" : "󰔟"
+                                      color: metric.flame ? root.urgent : root.cautionIcon
+                                      font.family: Style.font.family
+                                      font.pixelSize: Style.font.heading
+                                      anchors.verticalCenter: parent.verticalCenter
+                                    }
+                                    Label {
+                                      id: warningText
+                                      visible: text !== ""
+                                      text: Pace.summary(metric.forecast, root.now)
+                                      color: root.dim; font.pixelSize: Style.font.bodySmall
+                                      anchors.verticalCenter: parent.verticalCenter
+                                    }
+                                  }
+                                  MouseArea {
+                                    anchors.fill: parent; hoverEnabled: true
+                                    onEntered: if (root.bar) root.bar.showTooltip(this, Pace.tooltip(metric.forecast))
+                                    onExited: if (root.bar) root.bar.hideTooltip(this)
+                                  }
+                                }
+                              }
+                              Rectangle {
+                                width: parent.width; height: Style.space(6); radius: Math.min(Style.cornerRadius, height / 2)
+                                color: root.track
+                                Rectangle {
+                                  width: metric.remaining === "—" ? 0 : parent.width * Math.max(0, Math.min(1, 1 - metric.modelData.used))
+                                  height: parent.height; radius: parent.radius
+                                  color: root.meterColor(Pace.severity(metric.modelData, metric.forecast, root.now, Model.fresh(providerGroup.provider, root.now)))
+                                  opacity: Model.fresh(providerGroup.provider, root.now) ? 1 : 0.4
+                                }
+                                Rectangle {
+                                  visible: metric.paceMarker !== null
+                                  x: Math.max(0, Math.min(parent.width - width, parent.width * (1 - (metric.paceMarker || 0)) - width / 2))
+                                  anchors.verticalCenter: parent.verticalCenter
+                                  width: Style.space(2); height: parent.height + Style.space(4); radius: Style.space(1)
+                                  color: root.mix(root.foreground, root.group, 0.45)
+                                }
+                                MouseArea {
+                                  anchors.fill: parent; anchors.margins: -Style.space(3)
+                                  hoverEnabled: true
+                                  onEntered: if (root.bar && metric.forecast) root.bar.showTooltip(this, Pace.tooltip(metric.forecast))
+                                  onExited: if (root.bar) root.bar.hideTooltip(this)
+                                }
+                              }
+                              Item {
+                                width: parent.width
+                                height: Math.max(remainingText.height, resetText.height)
+                                Label {
+                                  id: remainingText
+                                  text: metric.remaining + (metric.remaining === "—" ? "" : " left")
+                                }
+                                Label {
+                                  id: resetText
+                                  anchors.right: parent.right
+                                  width: parent.width - remainingText.width - Style.space(10)
+                                  horizontalAlignment: Text.AlignRight
+                                  text: metric.modelData.resetAt > root.now ? "Resets in " + Pace.duration(metric.modelData.resetAt - root.now) : metric.modelData.resetAt > 0 ? "Awaiting reset update" : "Reset not reported"
+                                  wrapMode: Text.WordWrap
+                                  color: root.dim; font.pixelSize: Style.font.body
+                                }
+                              }
+                            }
                           }
                         }
                       }
@@ -438,7 +466,7 @@ Panel {
                   }
                 }
               }
-          }
+            }
           }
           Label {
             visible: !root.settingsOpen && root.orderError !== ""

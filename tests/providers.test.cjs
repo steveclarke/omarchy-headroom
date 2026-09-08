@@ -69,3 +69,19 @@ test('drag moves an ID without swapping other providers or changing preferences'
   assert.deepEqual(plain(api.reordered(initial,'unknown','a',false)),initial);
   assert.deepEqual(initial.providerOrder,['a','hidden','b','c']);
 });
+
+test('cost moves around providers without entering collection or losing its hidden position', () => {
+  let prefs=api.normalize(catalog,{});
+  assert.deepEqual(plain(api.panelOrder(prefs)),['cost','claude','codex']);
+  prefs=api.reordered(prefs,'cost','claude',true);
+  assert.deepEqual(plain(api.panelOrder(prefs)),['claude','cost','codex']);
+  prefs=api.normalize(catalog,{...prefs,showCosts:false});
+  assert.deepEqual(plain(api.panelOrder(prefs)),['claude','cost','codex']);
+  assert.deepEqual(plain(api.selected(catalog,prefs,false,false)),['claude','codex']);
+  prefs=api.reordered(prefs,'cost','codex',true);
+  assert.deepEqual(plain(api.panelOrder(prefs)),['claude','codex','cost']);
+  prefs=api.reordered(prefs,'cost','claude',false);
+  assert.deepEqual(plain(api.panelOrder(prefs)),['cost','claude','codex']);
+  assert.equal(api.normalize(catalog,{costPosition:99}).costPosition,2);
+  assert.equal(api.normalize(catalog,{costPosition:'1'}).costPosition,0);
+});
