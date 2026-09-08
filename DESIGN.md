@@ -67,7 +67,7 @@ All switches share one right edge. A grip on the left moves the whole provider g
 
 Tab walks settings controls, Space activates them, and Done or Escape returns to details while keeping changes. Reordering restores settings focus; other changes preserve the focused control. S opens settings. Outside settings, the shell owns Tab panel switching and Escape dismissal; R or activation refreshes, arrows scroll/select periods, and 1–3 select cost periods.
 
-The footer has two explicit lines: Headroom, then Refreshes every 5 min (or Updating usage / Sample data). Both use the shared small body font and the second line never wraps. Settings and Refresh sit beside them.
+The footer has two explicit lines: Headroom, then Next update in X min (or Updating… / Sample data). The countdown follows the earliest enabled worker deadline, updates each second, and shows <1 min in the final minute. Both use the shared small body font and the second line never wraps. Settings and Refresh sit beside them.
 
 ## Verification
 

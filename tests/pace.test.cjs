@@ -97,3 +97,16 @@ test('missing and reset values never read as a full allowance', () => {
   assert.equal(model.percentage(null, now), '—');
   assert.equal(model.percentage({...window(.4), resetAt:now}, now), '—');
 });
+
+test('refresh footer follows enabled worker deadlines and refresh completion', () => {
+  const service={demoMode:'',refreshing:false,costsRefreshing:false,selectedIds:['claude'],costIds:['claude'],nextRefreshAt:now+300000,nextCostRefreshAt:now+120000};
+  assert.equal(model.refreshLabel(service,now),'Next update in 2 min');
+  assert.equal(model.refreshLabel(service,now+61000),'Next update in <1 min');
+  assert.equal(model.refreshLabel({...service,costIds:[]},now),'Next update in 5 min');
+  assert.equal(model.refreshLabel({...service,refreshing:true},now),'Updating…');
+  assert.equal(model.refreshLabel({...service,costsRefreshing:true},now),'Updating…');
+  assert.equal(model.refreshLabel({...service,nextCostRefreshAt:now+300000},now),'Next update in 5 min');
+  assert.equal(model.refreshLabel(service,now+120000),'Next update soon');
+  assert.equal(model.refreshLabel({...service,selectedIds:[],costIds:[]},now),'Updates paused');
+  assert.equal(model.refreshLabel({...service,demoMode:'normal'},now),'Sample data');
+});

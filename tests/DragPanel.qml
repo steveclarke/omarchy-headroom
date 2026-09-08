@@ -18,6 +18,9 @@ ShellRoot {
     property bool refreshing: false
     property bool costsRefreshing: false
     property int costPeriod: 0
+    property var selectedIds: Providers.selected(catalog,preferences,false,false)
+    property double nextRefreshAt: nowMs + 300000
+    property double nextCostRefreshAt: nowMs + 120000
     property var providers: Providers.selected(catalog,preferences,false,false).map(function(id) {return Object.assign({},Providers.find(Model.demo(nowMs,demoMode),id),Providers.find(catalog,id))})
     property var costIds: preferences.showCosts ? Providers.selected(catalog,preferences,false,true) : []
     property var costs: Costs.demo(nowMs,demoMode)
@@ -57,6 +60,7 @@ ShellRoot {
     when:true
     onCompletedChanged: if(completed) console.log("MAIN_DRAG_RESULTS",results.passCount,results.failCount)
     function init() {
+      data.demoMode="demo"
       data.preferences=Providers.normalize(data.catalog,{showCosts:false})
       details.hideSettings();details.open();wait(100)
     }
@@ -99,6 +103,19 @@ ShellRoot {
       handle=findHandle("cost")
       handle.forceActiveFocus();keyClick(Qt.Key_Up);wait(50)
       compare(Providers.panelOrder(data.preferences).join(","),"claude,cost,codex")
+    }
+    function test_refresh_countdown_binding() {
+      var surface=findHandle("claude").QsWindow.window.contentItem[0]
+      var label=findChild(surface,"refresh-countdown")
+      verify(label!==null)
+      data.demoMode="";data.nextRefreshAt=data.nowMs+120000;wait(30)
+      compare(label.text,"Next update in 2 min")
+      data.nowMs+=61000;wait(30)
+      compare(label.text,"Next update in <1 min")
+      verify(label.contentWidth <= label.width,"Countdown fits without truncation")
+      data.refreshing=true;wait(30);compare(label.text,"Updating…")
+      data.nextRefreshAt=data.nowMs+300000;data.refreshing=false;wait(30)
+      compare(label.text,"Next update in 5 min")
     }
     function test_main_down() {perform("claude","codex")}
     function test_main_up() {perform("codex","claude")}

@@ -484,7 +484,8 @@ Panel {
               Label { text: "Headroom"; font.pixelSize: Style.font.bodySmall; color: root.dim }
               Label {
                 width: parent.width
-                text: root.service && root.service.demoMode !== "" ? "Sample data" : root.service && (root.service.refreshing || root.service.costsRefreshing) ? "Updating usage…" : "Refreshes every 5 min"
+                objectName: "refresh-countdown"
+                text: Model.refreshLabel(root.service, root.now)
                 color: root.dim; font.pixelSize: Style.font.bodySmall
                 elide: Text.ElideRight
               }
