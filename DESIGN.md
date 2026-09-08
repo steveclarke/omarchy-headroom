@@ -91,6 +91,8 @@ The cost ring is drawn in a `Style.space(134)` square with a `Style.space(24)` s
 
 Each provider has a monochrome mark and its weekly percentage remaining. Session values belong in the popup. A stale reading adds `!`; an urgent or exhausted weekly forecast adds a flame. Left-click toggles the native panel; right-click refreshes. The native open-panel indicator follows the visible content width.
 
+The bar tooltip is a compact allowance snapshot using the native shell's tooltip font, colors, placement, and hover delay. Each provider shows weekly allowance remaining and its reset countdown, then reported session and model percentages on a compact line. Conditional warnings name the affected window and reuse the panel's flame/hourglass glyphs and forecast wording. Healthy forecasts remain quiet. Retained readings are explicitly marked outdated; missing and expired values never become zero or full allowance. The tooltip contains no costs or routine click instructions. Synthetic preview mode identifies its sample data.
+
 ### Cost summary
 
 Today, Yesterday, and 30 Days select local estimated API-equivalent value in USD. The information icon's tooltip and accessible name explain the meaning. 30 Days includes today and the previous 29 calendar days.

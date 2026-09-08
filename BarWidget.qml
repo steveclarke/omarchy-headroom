@@ -32,6 +32,40 @@ BarWidget {
     }
     return ""
   }
+  function providerTooltip(p) {
+    var fresh = Model.fresh(p, now)
+    var lines = [p.name + (!fresh && p.windows.length ? " · Outdated" : "")]
+    if (!p.windows.length) return lines.concat([Model.message(p, now) || "Usage unavailable"]).join("\n")
+
+    var weekly = Model.find(p, "weekly")
+    var remaining = Model.percentage(weekly, now)
+    var headline = "Weekly " + remaining + (remaining === "—" ? "" : " left")
+    if (weekly && weekly.resetAt > now)
+      headline += " · resets in " + Pace.duration(weekly.resetAt - now)
+    lines.push(headline)
+
+    var details = []
+    for (var i = 0; i < p.windows.length; i++) {
+      var w = p.windows[i]
+      if (w.id === "weekly") continue
+      var label = w.id === "fable-weekly" ? "Fable" : w.title
+      var value = Model.percentage(w, now)
+      details.push(label + " " + value + (value === "—" ? "" : " left"))
+    }
+    if (details.length) lines.push(details.join(" · "))
+
+    for (var j = 0; j < p.windows.length; j++) {
+      var window = p.windows[j]
+      var forecast = Pace.evaluate(window, p.observedAt, now, fresh)
+      if (!forecast || forecast.status === "calm") continue
+      var icon = forecast.status === "caution" ? "󰔟" : "󰈸"
+      var note = Pace.summary(forecast, now)
+      lines.push(icon + " " + window.title + (note ? " · " + note : ""))
+    }
+    var message = Model.message(p, now)
+    if (message && fresh) lines.push(message)
+    return lines.join("\n")
+  }
   implicitWidth: button.implicitWidth
   implicitHeight: button.implicitHeight
   readonly property real openPanelIndicatorWidth: Math.round(chips.implicitWidth)
@@ -50,7 +84,8 @@ BarWidget {
     labelVisible: false
     fixedWidth: root.vertical ? -1 : chips.implicitWidth + Style.space(16)
     fixedHeight: root.vertical ? chips.implicitHeight + Style.space(12) : -1
-    tooltipText: "Headroom · weekly percentages remaining\nClick for costs, limits and forecasts · right-click to refresh"
+    tooltipText: (root.service && root.service.demoMode ? "Sample data\n\n" : "")
+      + root.providers.map(function(p) { return root.providerTooltip(p) }).join("\n\n")
     Accessible.role: Accessible.Button
     Accessible.name: "Headroom. " + root.providers.map(function(p) {
       return p.name + ": weekly " + Model.percentage(Model.find(p, "weekly"), root.now) + " remaining"
