@@ -113,8 +113,7 @@ Panel {
             width: parent.width
             service: root.service
             ink: root.foreground; dim: root.dim; surface: root.surface; group: root.group; track: root.track
-            onAccepted: root.hideSettings()
-            onCancelled: root.hideSettings()
+            onDone: root.hideSettings()
           }
           Label {
             visible: !root.settingsOpen && !root.providers.length

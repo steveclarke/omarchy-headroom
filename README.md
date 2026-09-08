@@ -73,7 +73,7 @@ Click **Settings** in the panel, or press **S** while it is open. Claude and Cod
 
 The arrows set the same provider order for the bar, quota groups and cost legend. **Show cost estimates** controls the whole cost section and its local-history workers. Quotas work without installing the optional cost reader. When there are no bar summaries, a compact **Headroom** entry keeps the panel and settings reachable.
 
-Save applies choices across all monitors through Omarchy's existing widget configuration. Cancel or Escape discards the draft. In settings, Tab moves between controls and Space activates them; Escape returns to details. Outside settings, the native panel navigation and refresh keys remain available.
+Changes apply and save automatically across all monitors through Omarchy's existing widget configuration. The bar updates while settings stays open. **Done** or Escape returns to the updated details panel and keeps your changes; closing the panel also keeps them. In settings, Tab moves between controls and Space activates them. A rejected change leaves the saved selection in place and shows an error. Outside settings, the native panel navigation and refresh keys remain available.
 
 To check the runtime and selected collector commands without reading accounts or contacting providers:
 

@@ -100,8 +100,8 @@
         {
           "name": "Provider settings",
           "source": "SettingsView.qml",
-          "description": "Provider order arrows and Bar + panel / Panel only / Off pills inside inset groups, a native cost toggle, and Cancel / Save actions. Uses the same panel, colors and scaling.",
-          "states": ["draft", "saved", "cancelled", "save unavailable", "all providers off"]
+          "description": "Provider order arrows and Bar + panel / Panel only / Off pills inside inset groups, a native cost toggle, and a Done action. Changes apply and save immediately; controls track shared saved preferences. Uses the same panel, colors and scaling.",
+          "states": ["saved", "save rejected", "all providers off"]
         }
       ]
     }

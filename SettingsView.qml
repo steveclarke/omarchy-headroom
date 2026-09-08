@@ -13,35 +13,37 @@ Column {
   required property color surface
   required property color group
   required property color track
-  property var draft: ({providerOrder: [], providers: {}, showCosts: true})
+  readonly property var preferences: service ? service.preferences : Providers.normalize([], {})
+  // A stable scalar keeps visibility changes from rebuilding focused controls.
+  readonly property string orderKey: preferences.providerOrder.join(",")
   property string error: ""
-  signal accepted()
-  signal cancelled()
+  signal done()
   spacing: Style.space(18)
-  Keys.onEscapePressed: function(event) { root.cancelled(); event.accepted = true }
+  Keys.onEscapePressed: function(event) { root.done(); event.accepted = true }
 
   function begin() {
-    draft = JSON.parse(JSON.stringify(service.preferences))
     error = ""
     forceActiveFocus()
   }
   function display(id, mode) {
-    var next = JSON.parse(JSON.stringify(draft))
+    var next = JSON.parse(JSON.stringify(preferences))
     next.providers[id].display = mode
-    draft = next
+    apply(next)
   }
   function reorder(id, direction) {
-    var next = JSON.parse(JSON.stringify(draft)), index = next.providerOrder.indexOf(id), target = index + direction
+    var next = JSON.parse(JSON.stringify(preferences)), index = next.providerOrder.indexOf(id), target = index + direction
     if (target < 0 || target >= next.providerOrder.length) return
     var other = next.providerOrder[target]
     next.providerOrder[target] = id; next.providerOrder[index] = other
-    draft = next
+    apply(next)
     // Reordering rebuilds the delegates; keep keyboard navigation in settings.
     Qt.callLater(function() { root.forceActiveFocus() })
   }
-  function save() {
-    if (service.savePreferences(draft)) root.accepted()
-    else error = "Could not save settings. Update Omarchy and try again."
+  function setCosts(value) {
+    apply(Object.assign({}, preferences, {showCosts: value}))
+  }
+  function apply(value) {
+    error = service && service.savePreferences(value) ? "" : "Could not save this change. Try again."
   }
   function status(id) {
     var p = Providers.find(service.providers, id)
@@ -58,10 +60,10 @@ Column {
     width: parent.width
     spacing: Style.space(6)
     Label { text: "Settings"; font.pixelSize: Style.space(18); font.weight: Font.DemiBold }
-    Label { width: parent.width; text: "Choose where each provider appears."; color: root.dim; wrapMode: Text.WordWrap }
+    Label { width: parent.width; text: "Changes apply immediately."; color: root.dim; wrapMode: Text.WordWrap }
   }
   Repeater {
-    model: root.draft.providerOrder
+    model: root.orderKey ? root.orderKey.split(",") : []
     Rectangle {
       id: providerRow
       required property string modelData
@@ -105,7 +107,7 @@ Column {
             iconText: ""
             foreground: root.ink
             focusable: true
-            enabled: providerRow.index < root.draft.providerOrder.length - 1
+            enabled: providerRow.index < root.preferences.providerOrder.length - 1
             Accessible.name: "Move " + providerRow.meta.name + " down"
             onClicked: root.reorder(providerRow.modelData, 1)
           }
@@ -125,11 +127,11 @@ Column {
                 width: parent.width / 3; height: parent.height
                 text: modelData.label
                 ink: root.ink
-                surface: root.draft.providers[providerRow.modelData].display === modelData.id ? root.surface : "transparent"
+                surface: root.preferences.providers[providerRow.modelData].display === modelData.id ? root.surface : "transparent"
                 hotSurface: root.group
                 Accessible.role: Accessible.RadioButton
                 Accessible.name: providerRow.meta.name + ": " + modelData.label
-                Accessible.checked: root.draft.providers[providerRow.modelData].display === modelData.id
+                Accessible.checked: root.preferences.providers[providerRow.modelData].display === modelData.id
                 onClicked: root.display(providerRow.modelData, modelData.id)
               }
             }
@@ -145,8 +147,8 @@ Column {
     hoverEnabled: true
     Accessible.role: Accessible.CheckBox
     Accessible.name: "Show cost estimates"
-    Accessible.checked: root.draft.showCosts
-    onClicked: root.draft = Object.assign({}, root.draft, {showCosts: !root.draft.showCosts})
+    Accessible.checked: root.preferences.showCosts
+    onClicked: root.setCosts(!root.preferences.showCosts)
     background: Rectangle { color: "transparent"; radius: Style.space(6); border.width: costsToggle.activeFocus ? 1 : 0; border.color: root.ink }
     contentItem: Item {
       Column {
@@ -161,7 +163,7 @@ Column {
         id: costSwitch
         anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter
         interactive: false
-        checked: root.draft.showCosts
+        checked: root.preferences.showCosts
         foreground: root.ink
       }
     }
@@ -170,7 +172,6 @@ Column {
   Row {
     anchors.right: parent.right
     spacing: Style.space(8)
-    PillButton { text: "Cancel"; ink: root.ink; surface: root.group; hotSurface: root.track; onClicked: root.cancelled() }
-    PillButton { text: "Save"; ink: root.ink; surface: root.group; hotSurface: root.track; enabled: root.service.catalog.length > 0; onClicked: root.save() }
+    PillButton { text: "Done"; ink: root.ink; surface: root.group; hotSurface: root.track; onClicked: root.done() }
   }
 }

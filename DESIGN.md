@@ -111,7 +111,7 @@ Very early readings below 5% usage suppress extrapolated alarms. Without a usabl
 
 ### Provider settings
 
-Settings replaces the detail content inside the same native panel. Provider groups retain the quiet inset surfaces, with name and reorder arrows above three pills: Bar + panel, Panel only, and Off. A native toggle controls cost estimates. Cancel and Save apply to the whole draft. Off stops collection; Panel only keeps collection running. Provider order also controls the cost legend. Tab walks settings controls; Escape discards the draft and returns to details. S opens settings from the detail panel.
+Settings replaces the detail content inside the same native panel. Provider groups retain the quiet inset surfaces, with name and reorder arrows above three pills: Bar + panel, Panel only, and Off. A native toggle controls cost estimates. Changes apply and save immediately; controls reflect the shared saved preferences. A rejected change shows an error without displaying an unsaved selection. Off stops collection; Panel only keeps collection running. Provider order also controls the cost legend. Tab walks settings controls; Done and Escape return to details and keep changes. The bar updates while settings stays open; panel-only changes appear on returning to details. S opens settings from the detail panel.
 
 ### Native panel controls
 
