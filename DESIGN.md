@@ -74,3 +74,5 @@ The footer has two explicit lines: Headroom, then Next update in X min (or Updat
 Use synthetic usage for captures. Check both light and dark palettes, missing and stale readings, warning states, costs and settings, native keyboard behavior, and saved choices. Never publish private account data or surrounding desktop content. Preserve shared shell styling rather than changing global settings to accommodate Headroom.
 
 Cost has a draggable row in Settings and a grip beside its panel heading. Move it above, between, or below providers. Its position is retained when hidden; moving Cost does not change provider order in the bar.
+
+Cost periods fill one full-width row with equal-width choices. Settings separates each provider group with a divider; the indented Show in top bar option explains Weekly percentage remaining. Healthy providers have no Ready subtitle; status text is reserved for missing or stale data.

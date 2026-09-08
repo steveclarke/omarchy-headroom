@@ -188,12 +188,15 @@ Panel {
                           width: parent.width
                           spacing: Style.space(16)
                           Row {
-                            spacing: Style.spacing.md
+                            id: costPeriods
+                            width: parent.width
+                            spacing: Style.space(2)
                             Repeater {
                               model: ["Today", "Yesterday", "30 Days"]
                               Ui.Button {
                                 required property string modelData
                                 required property int index
+                                width: (costPeriods.width - 2 * costPeriods.spacing) / 3
                                 text: modelData
                                 selected: root.period === index
                                 bordered: true

@@ -49,9 +49,9 @@ Column {
     error = service && service.savePreferences(value) ? "" : "Could not save this change. Try again."
   }
   function status(id) {
-    if (preferences.providers[id].display === "off") return "Not enabled"
+    if (preferences.providers[id].display === "off") return ""
     var p = Providers.find(service.providers, id)
-    return p ? (Model.fresh(p, service.nowMs) ? "Ready" : Model.message(p, service.nowMs)) : "Waiting for usage"
+    return p ? (Model.fresh(p, service.nowMs) ? "" : Model.message(p, service.nowMs)) : "Waiting for usage"
   }
   component Label: Text {
     textFormat: Text.PlainText
@@ -62,6 +62,7 @@ Column {
   component SwitchRow: Ui.Toggle {
     foreground: root.ink
     titleSize: Style.font.body
+    descriptionSize: Style.font.bodySmall
     opacity: enabled ? 1 : 0.45
     Accessible.role: Accessible.CheckBox
     Accessible.name: label
@@ -92,7 +93,8 @@ Column {
       Column {
         id: providerLayout
         width: parent.width
-        spacing: Style.spacing.sm
+        spacing: Style.spacing.md
+        PanelSeparator { visible: providerRow.index > 0; foreground: root.ink }
         Row {
           width: parent.width
           spacing: Style.spacing.sm
@@ -113,9 +115,10 @@ Column {
         }
         SwitchRow {
           visible: providerRow.modelData !== "cost"
-          x: Style.space(24) + Style.spacing.sm
+          x: Style.space(44) + Style.spacing.sm
           width: parent.width - x
-          label: "Show weekly usage in top bar"
+          label: "Show in top bar"
+          description: "Weekly percentage remaining"
           checked: !!providerRow.preference && providerRow.preference.showInBar
           enabled: !!providerRow.preference && providerRow.preference.display !== "off"
           Accessible.name: providerRow.meta.name + ": " + label
