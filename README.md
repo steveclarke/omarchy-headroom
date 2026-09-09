@@ -20,7 +20,9 @@ Forecasts use average consumption since the quota window began. They are estimat
 
 Synthetic values; the interface follows the active Omarchy theme.
 
-![Headroom with synthetic Claude and Codex usage](preview.png)
+| Dark | Light |
+| --- | --- |
+| ![Headroom in dark mode with sample data](screenshots/headroom-dark.png) | ![Headroom in light mode with sample data](screenshots/headroom-light.png) |
 
 ## Requirements
 
