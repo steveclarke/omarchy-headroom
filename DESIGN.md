@@ -15,7 +15,7 @@ typography:
 
 Headroom follows the installed Omarchy shell. The panel is flat, with the native popup border and corner radius, shared fonts, buttons, switches and separators. It keeps the usage information together in one column. The bar remains compact, with monochrome provider marks and weekly percentages.
 
-`Panel.qml`, `SettingsView.qml` and `BarWidget.qml` are the visual source of truth. Native expressions are recorded in [.impeccable/design.json](.impeccable/design.json). The font family in frontmatter is the shell's default alias; live controls bind to `Style.font.family` so changes follow the desktop.
+`Panel.qml`, `SettingsView.qml` and `BarWidget.qml` are the visual source of truth. The font family in frontmatter is the shell's default alias; live controls bind to `Style.font.family` so changes follow the desktop.
 
 ## Theme and geometry
 
