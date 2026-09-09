@@ -33,11 +33,22 @@ Synthetic values; the interface follows the active Omarchy theme.
 
 ## Install
 
+Install and enable Headroom using the same command shown on the marketplace:
+
 ```sh
 omarchy plugin add https://github.com/steveclarke/omarchy-headroom.git --enable
+```
+
+With your Claude Code or Codex CLI signed in, this enables allowance percentages, reset times, and usage forecasts. No separate cost reader is required for those features.
+
+**Optional: enable dollar estimates.** With Bun and system Node.js installed, run:
+
+```sh
 python3 ~/.config/omarchy/plugins/io.github.steveclarke.headroom/bin/setup-costs
 omarchy-shell headroom refresh
 ```
+
+This installs the pinned ccusage reader used for Today, Yesterday, and 30 Days estimates. If you only want allowance information, skip this step and turn off **Cost** in Headroom’s settings.
 
 Click the bar summary to open the panel. Right-click or middle-click refreshes; R or Enter refreshes inside the panel, and Escape closes it. Left/right arrows or 1/2/3 select the cost period. Usage refreshes every five minutes. Repeated refresh requests within twenty seconds are coalesced.
 
@@ -54,7 +65,7 @@ omarchy plugin remove io.github.steveclarke.headroom
 omarchy plugin enable omarchy.agents
 ```
 
-Update with `omarchy plugin update io.github.steveclarke.headroom`, then rerun `bin/setup-costs` from the installed plugin directory to apply any pinned cost-reader update.
+Update with `omarchy plugin update io.github.steveclarke.headroom`, if you use dollar estimates, rerun `bin/setup-costs` from the installed plugin directory to apply any pinned cost-reader update.
 If an update still shows the old behavior, run `omarchy restart shell` to clear the shell's compiled QML cache.
 
 Removing the plugin stops its workers and removes the plugin checkout. The separate `$XDG_DATA_HOME/headroom/ccusage-20.0.20` dependency directory remains, as do the provider CLIs, their credentials/history, and Omarchy's native usage caches. Headroom does not delete those shared files or restore the Agents widget automatically. Setup refuses redirected directories and never overwrites an existing version. If it reports a damaged installation, move that exact version directory aside and rerun setup; preserve it until the replacement works.
