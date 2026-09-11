@@ -30,6 +30,14 @@ function entry(config, id) {
   return {}
 }
 
+// `omarchy bar set` stores unquoted values as strings; the settings UI stores
+// real types. Accept both.
+function boolOf(value, fallback) { return typeof value === "boolean" ? value : value === "true" ? true : value === "false" ? false : fallback }
+function intOf(value) {
+  if (typeof value === "string" && /^-?\d{1,6}$/.test(value)) value = parseInt(value, 10)
+  return Number.isInteger(value) ? value : null
+}
+
 function normalize(items, raw) {
   raw = raw || {}
   var order = [], modes = {}, requested = Array.isArray(raw.providerOrder) && raw.providerOrder.length <= 20 ? raw.providerOrder : []
@@ -41,9 +49,10 @@ function normalize(items, raw) {
     var mode = p && p.display
     mode = ["off", "panel", "bar"].indexOf(mode) >= 0 ? mode : "bar"
     // Retain the top-bar choice while disabled; legacy display values still work.
-    modes[id] = {display: mode, showInBar: mode === "off" ? p.showInBar !== false : mode === "bar"}
+    modes[id] = {display: mode, showInBar: mode === "off" ? boolOf(p.showInBar, true) : mode === "bar"}
   })
-  return {providerOrder: order, providers: modes, showCosts: raw.showCosts !== false, costPosition: Number.isInteger(raw.costPosition) ? Math.max(0, Math.min(order.length, raw.costPosition)) : 0}
+  var position = intOf(raw.costPosition)
+  return {providerOrder: order, providers: modes, showCosts: boolOf(raw.showCosts, true), costPosition: position === null ? 0 : Math.max(0, Math.min(order.length, position))}
 }
 
 function selected(items, preferences, barOnly, costsOnly) {

@@ -9,6 +9,14 @@ BarWidget {
   id: root
   moduleName: "io.github.steveclarke.headroom"
   readonly property var service: bar && bar.shell ? bar.shell.serviceFor(moduleName) : null
+  // The bar keeps `settings` current; the service only ever gets a startup copy.
+  function pushSettings() {
+    if (!service || !settings) return
+    var next = Object.assign({id: moduleName}, settings)
+    if (JSON.stringify(next) !== JSON.stringify(service.entry)) service.entry = next
+  }
+  onSettingsChanged: pushSettings()
+  onServiceChanged: pushSettings()
   readonly property double now: service ? service.nowMs : Date.now()
   readonly property var providers: service ? service.barProviders : []
   readonly property bool opened: panelLoader.item ? panelLoader.item.opened : false

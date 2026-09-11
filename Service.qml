@@ -13,7 +13,11 @@ Item {
   property var manifest: null
   readonly property string pluginId: "io.github.steveclarke.headroom"
   readonly property var catalog: Providers.catalog(catalogFile.text())
-  readonly property var entry: Providers.entry(shell ? shell.shellConfig : null, pluginId)
+  // The shell hands a plugin a one-time copy of the bar config and no
+  // shellConfig, so the entry is seeded from that copy and then kept current by
+  // the bar widget, whose `settings` the bar patches live.
+  property var entry: ({})
+  onShellChanged: if (shell && shell.barConfig) entry = Providers.entry({bar: shell.barConfig}, pluginId)
   readonly property var preferences: Providers.normalize(catalog, entry)
   readonly property var selectedIds: Providers.selected(catalog, preferences, false, false)
   readonly property var costIds: preferences.showCosts ? Providers.selected(catalog, preferences, false, true) : []
@@ -73,7 +77,10 @@ Item {
     var normalized = Providers.normalize(catalog, value)
     if (JSON.stringify(normalized) === JSON.stringify(preferences)) return true
     // The native API replaces this entry's fields, so preserve other options.
-    return shell.updateEntryInline(pluginId, Providers.mergedEntry(Providers.entry(shell.shellConfig, pluginId), normalized))
+    var merged = Providers.mergedEntry(entry, normalized)
+    var saved = shell.updateEntryInline(pluginId, merged)
+    if (saved) entry = merged
+    return saved
   }
 
   function refresh() {

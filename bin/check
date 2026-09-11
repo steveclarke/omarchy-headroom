@@ -11,6 +11,8 @@ root = Path(__file__).resolve().parents[1]
 os.chdir(root)
 subprocess.run([sys.executable, '-B', '-m', 'unittest', 'discover', '-s', 'tests', '-p', 'test_*.py'], check=True)
 subprocess.run(['/usr/bin/node', '--test', 'tests/pace.test.cjs', 'tests/costs.test.cjs', 'tests/wire.test.cjs', 'tests/providers.test.cjs'], check=True)
+subprocess.run([sys.executable, str(root / 'tests/check-qml')], check=True)
+subprocess.run([sys.executable, str(root / 'tools/check-no-personal-data')], check=True)
 subprocess.run(['omarchy', 'plugin', 'validate', str(root)], check=True)
 
 shell = Path(os.environ.get('OMARCHY_PATH', '/usr/share/omarchy')) / 'shell'

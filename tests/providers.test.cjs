@@ -83,5 +83,17 @@ test('cost moves around providers without entering collection or losing its hidd
   prefs=api.reordered(prefs,'cost','claude',false);
   assert.deepEqual(plain(api.panelOrder(prefs)),['cost','claude','codex']);
   assert.equal(api.normalize(catalog,{costPosition:99}).costPosition,2);
-  assert.equal(api.normalize(catalog,{costPosition:'1'}).costPosition,0);
+  // `omarchy bar set` stores '1' as a string; it is a position, not junk.
+  assert.equal(api.normalize(catalog,{costPosition:'1'}).costPosition,1);
+  assert.equal(api.normalize(catalog,{costPosition:'x'}).costPosition,0);
+});
+
+test('settings written by `omarchy bar set` arrive as strings', () => {
+  // The CLI stores unquoted values as strings; the UI stores real types.
+  const settings=api.normalize(catalog,{showCosts:'false',costPosition:'1',providers:{claude:{display:'off',showInBar:'false'}}});
+  assert.equal(settings.showCosts,false);
+  assert.equal(settings.costPosition,1);
+  assert.equal(settings.providers.claude.showInBar,false);
+  assert.equal(api.normalize(catalog,{showCosts:'true'}).showCosts,true);
+  assert.equal(api.normalize(catalog,{showCosts:'maybe'}).showCosts,true);
 });

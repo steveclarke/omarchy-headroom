@@ -52,9 +52,10 @@ print(json.dumps({'schema':1,'observedAt':now,'providers':providers}))
   requests=root/'bin/requests.jsonl'; requests.unlink(missing_ok=True)
   initial={'id':'io.github.steveclarke.headroom','enabled':True,'keep':'native-option'}
   if mode=='disabled-startup': initial.update(providers={'claude':{'display':'off'},'codex':{'display':'off'}},showCosts=False)
-  mock='QtObject { id:host; property var shellConfig: ({bar:{layout:{center:['+json.dumps(initial)+']}}}); function updateEntryInline(id,value) { shellConfig={bar:{layout:{center:[value]}}}; return true } }'
+  # The shell hands a plugin `barConfig`, a one-time copy, and no `shellConfig`.
+  mock='QtObject { id:host; property var barConfig: ({layout:{center:['+json.dumps(initial)+']}}); function updateEntryInline(id,value) { barConfig={layout:{center:[value]}}; return true } }'
   functions='''function require(value,message) { if(!value) { console.log("UNEXPECTED_"+message); Qt.exit(3) } }
-function change(order,claude,codex,costs) { require(s.savePreferences({providerOrder:order,providers:{claude:{display:claude},codex:{display:codex}},showCosts:costs}),"save"); require(host.shellConfig.bar.layout.center[0].keep==="native-option","native-options") }
+function change(order,claude,codex,costs) { require(s.savePreferences({providerOrder:order,providers:{claude:{display:claude},codex:{display:codex}},showCosts:costs}),"save"); require(host.barConfig.layout.center[0].keep==="native-option","native-options") }
 '''
   if mode=='selection-race':
    actions='''Timer {interval:150;running:true;onTriggered:s.refresh()}
