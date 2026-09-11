@@ -86,7 +86,7 @@ Panel {
   function meterColor(severity) {
     return severity === "critical" ? urgent : severity === "warning" ? caution : Color.accent
   }
-  component Label: Text {
+  component PlainLabel: Text {
     color: root.foreground
     font.family: Style.font.family
     font.pixelSize: Style.font.body
@@ -137,7 +137,7 @@ Panel {
             ink: root.foreground; dim: root.dim
             onDone: root.hideSettings()
           }
-          Label {
+          PlainLabel {
             visible: !root.settingsOpen && !root.providers.length
             width: parent.width
             text: !root.service || !root.service.catalog.length ? "Headroom is unavailable. Check its installation." : "No providers enabled. Choose providers in Settings."
@@ -182,7 +182,7 @@ Panel {
                           anchors.verticalCenter: parent.verticalCenter
                         }
                         spacing: Style.space(8)
-                        Label { text: "Cost"; font.pixelSize: Style.font.heading; font.weight: Font.DemiBold }
+                        PlainLabel { text: "Cost"; font.pixelSize: Style.font.heading; font.weight: Font.DemiBold }
                         TintedIcon {
                           anchors.verticalCenter: parent.verticalCenter
                           width: Style.space(14); height: width
@@ -264,13 +264,13 @@ Panel {
                     Column {
                       anchors.centerIn: parent
                       width: parent.width - Style.space(54)
-                      Label {
+                      PlainLabel {
                         width: parent.width; horizontalAlignment: Text.AlignHCenter
                         text: root.costTotal === null ? "—" : "$" + Math.round(root.costTotal).toLocaleString(Qt.locale("en_US"), 'f', 0)
                         font.pixelSize: Style.font.display; font.weight: Font.DemiBold
                         minimumPixelSize: Style.space(12); fontSizeMode: Text.Fit
                       }
-                      Label {
+                      PlainLabel {
                         width: parent.width; horizontalAlignment: Text.AlignHCenter
                         text: "USD"; color: root.dim; font.pixelSize: Style.font.bodySmall
                       }
@@ -296,12 +296,12 @@ Panel {
                           anchors.verticalCenter: parent.verticalCenter
                           color: legendRow.modelData.color
                         }
-                        Label {
+                        PlainLabel {
                           anchors.left: dot.right; anchors.leftMargin: Style.space(7)
                           anchors.verticalCenter: parent.verticalCenter
                           text: legendRow.modelData.shortName; font.pixelSize: Style.font.body
                         }
-                        Label {
+                        PlainLabel {
                           width: Math.min(implicitWidth, parent.width * 0.52)
                           anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter
                           text: root.money(root.costAmounts[legendRow.index])
@@ -316,7 +316,7 @@ Panel {
                 }
               }
             }
-            Label {
+            PlainLabel {
               width: parent.width
               text: root.costMessage
               color: root.dim; font.pixelSize: Style.font.bodySmall
@@ -348,13 +348,13 @@ Panel {
                             width: Style.space(21); height: width
                             anchors.verticalCenter: parent.verticalCenter
                           }
-                          Label {
+                          PlainLabel {
                             id: providerName
                             text: providerGroup.provider.shortName
                             font.pixelSize: Style.font.heading; font.weight: Font.DemiBold
                             anchors.verticalCenter: parent.verticalCenter
                           }
-                          Label {
+                          PlainLabel {
                             width: Math.max(0, parent.width - providerName.width - providerIcon.width - Style.space(21))
                             text: providerGroup.provider.plan
                             elide: Text.ElideRight
@@ -376,7 +376,7 @@ Panel {
                           id: quotas
                           width: parent.width
                           spacing: Style.spacing.panelGap
-                          Label {
+                          PlainLabel {
                             width: parent.width
                             text: Model.message(providerGroup.provider, root.now)
                             visible: text !== ""
@@ -399,7 +399,7 @@ Panel {
                               Item {
                                 width: parent.width
                                 height: Math.max(quotaTitle.height, warning.implicitHeight)
-                                Label {
+                                PlainLabel {
                                   id: quotaTitle
                                   width: parent.width - (warning.visible ? warning.width + Style.space(10) : 0)
                                   text: metric.modelData.title === "Fable Weekly" ? "Fable" : metric.modelData.title
@@ -415,7 +415,7 @@ Panel {
                                   Row {
                                     id: warningContents
                                     spacing: Style.space(4)
-                                    Label {
+                                    PlainLabel {
                                       visible: metric.flame || (metric.forecast !== null && metric.forecast.status === "caution")
                                       text: metric.flame ? "󰈸" : "󰔟"
                                       color: metric.flame ? root.urgent : root.cautionIcon
@@ -423,7 +423,7 @@ Panel {
                                       font.pixelSize: Style.font.heading
                                       anchors.verticalCenter: parent.verticalCenter
                                     }
-                                    Label {
+                                    PlainLabel {
                                       id: warningText
                                       visible: text !== ""
                                       text: Pace.summary(metric.forecast, root.now)
@@ -464,11 +464,11 @@ Panel {
                               Item {
                                 width: parent.width
                                 height: Math.max(remainingText.height, resetText.height)
-                                Label {
+                                PlainLabel {
                                   id: remainingText
                                   text: metric.remaining + (metric.remaining === "—" ? "" : " left")
                                 }
-                                Label {
+                                PlainLabel {
                                   id: resetText
                                   anchors.right: parent.right
                                   width: parent.width - remainingText.width - Style.space(10)
@@ -488,7 +488,7 @@ Panel {
               }
             }
           }
-          Label {
+          PlainLabel {
             visible: !root.settingsOpen && root.orderError !== ""
             width: parent.width; text: root.orderError; wrapMode: Text.WordWrap
           }
@@ -501,8 +501,8 @@ Panel {
               width: parent.width - refreshButton.width - settingsButton.width - Style.space(12)
               anchors.verticalCenter: parent.verticalCenter
               spacing: Style.spacing.xs
-              Label { text: "Headroom"; font.pixelSize: Style.font.bodySmall; color: root.dim }
-              Label {
+              PlainLabel { text: "Headroom"; font.pixelSize: Style.font.bodySmall; color: root.dim }
+              PlainLabel {
                 width: parent.width
                 objectName: "refresh-countdown"
                 text: Model.refreshLabel(root.service, root.now)

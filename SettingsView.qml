@@ -47,7 +47,7 @@ Column {
   function apply(value) {
     error = service && service.savePreferences(value) ? "" : "Could not save this change. Try again."
   }
-  component Label: Text {
+  component PlainLabel: Text {
     textFormat: Text.PlainText
     color: root.ink
     font.family: Style.font.family
@@ -81,12 +81,12 @@ Column {
       trackHeight: Style.space(18)
     }
   }
-  Label { text: "Settings"; font.pixelSize: Style.font.heading; font.weight: Font.DemiBold }
+  PlainLabel { text: "Settings"; font.pixelSize: Style.font.heading; font.weight: Font.DemiBold }
   Row {
     width: parent.width
     Item { width: parent.width - 2 * root.controlWidth; height: 1 }
-    Label { width: root.controlWidth; text: "Enabled"; horizontalAlignment: Text.AlignHCenter; color: root.dim; font.pixelSize: Style.font.bodySmall }
-    Label { width: root.controlWidth; text: "Top bar"; horizontalAlignment: Text.AlignHCenter; color: root.dim; font.pixelSize: Style.font.bodySmall }
+    PlainLabel { width: root.controlWidth; text: "Enabled"; horizontalAlignment: Text.AlignHCenter; color: root.dim; font.pixelSize: Style.font.bodySmall }
+    PlainLabel { width: root.controlWidth; text: "Top bar"; horizontalAlignment: Text.AlignHCenter; color: root.dim; font.pixelSize: Style.font.bodySmall }
   }
   Repeater {
     id: providerRepeater
@@ -115,7 +115,7 @@ Column {
             reorder: orderDrag; providerItem: providerRow; providerName: providerRow.meta.name
             ink: root.dim
           }
-          Label {
+          PlainLabel {
             anchors.left: grip.right; anchors.leftMargin: Style.spacing.sm
             anchors.right: parent.right; anchors.rightMargin: Style.spacing.sm
             anchors.verticalCenter: parent.verticalCenter
@@ -139,7 +139,7 @@ Column {
             enabled: !!providerRow.preference && providerRow.preference.display !== "off"
             onToggled: root.setShowInBar(providerRow.modelData, !checked)
           }
-          Label {
+          PlainLabel {
             visible: providerRow.modelData === "cost"
             anchors.centerIn: parent; text: "—"; color: root.dim
           }
@@ -148,20 +148,20 @@ Column {
       PanelSeparator { anchors.bottom: parent.bottom; foreground: root.ink }
     }
   }
-  Label {
+  PlainLabel {
     width: parent.width
     text: "Drag rows to reorder.\nTop bar shows weekly allowance remaining."
     color: root.dim; font.pixelSize: Style.font.bodySmall; wrapMode: Text.WordWrap
   }
-  Label {
+  PlainLabel {
     width: parent.width
     text: "Disabling a provider stops collection and hides it. Its top-bar choice is kept."
     color: root.dim; font.pixelSize: Style.font.bodySmall; wrapMode: Text.WordWrap
   }
-  Label { width: parent.width; visible: root.error !== ""; text: root.error; wrapMode: Text.WordWrap }
+  PlainLabel { width: parent.width; visible: root.error !== ""; text: root.error; wrapMode: Text.WordWrap }
   Row {
     width: parent.width
-    Label {
+    PlainLabel {
       width: parent.width - doneButton.width - Style.spacing.sm
       anchors.verticalCenter: parent.verticalCenter
       text: "Changes apply immediately."
