@@ -166,7 +166,7 @@ Item {
     onFailed: { root.fail("Could not read usage · try refreshing"); root.nextRefreshAt = root.selectedIds.length ? Date.now() + 300000 : 0 }
   }
   IpcHandler {
-    target: "headroom"
+    target: "io.github.steveclarke.headroom"
     function refresh(): void { root.refresh() }
     function preview(mode: string): void { root.preview(mode) }
     function period(index: int): void { if (index >= 0 && index <= 2) root.costPeriod = index }

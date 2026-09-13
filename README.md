@@ -45,7 +45,7 @@ With your Claude Code or Codex CLI signed in, this enables allowance percentages
 
 ```sh
 python3 ~/.config/omarchy/plugins/io.github.steveclarke.headroom/bin/setup-costs
-omarchy-shell headroom refresh
+omarchy-shell io.github.steveclarke.headroom refresh
 ```
 
 This installs the pinned ccusage reader used for Today, Yesterday, and 30 Days estimates. If you only want allowance information, skip this step and turn off **Cost** in Headroom’s settings.
@@ -134,7 +134,7 @@ The reader integration check uses only generated histories, offline mode, and te
 For runtime checks on an installed plugin:
 
 ```sh
-omarchy-shell headroom status
+omarchy-shell io.github.steveclarke.headroom status
 omarchy-shell shell summon io.github.steveclarke.headroom '{}'
 omarchy-shell shell hide io.github.steveclarke.headroom
 ```
@@ -142,10 +142,10 @@ omarchy-shell shell hide io.github.steveclarke.headroom
 Synthetic previews exercise forecasts, errors and empty states without provider calls. The footer always identifies sample data. Return to live mode when finished:
 
 ```sh
-omarchy-shell headroom preview normal
-omarchy-shell headroom preview stale
-omarchy-shell headroom preview empty
-omarchy-shell headroom preview ''
+omarchy-shell io.github.steveclarke.headroom preview normal
+omarchy-shell io.github.steveclarke.headroom preview stale
+omarchy-shell io.github.steveclarke.headroom preview empty
+omarchy-shell io.github.steveclarke.headroom preview ''
 ```
 
 `python3 tests/check-drag --desktop` also tests main-screen dragging in an isolated native panel with synthetic data; it briefly opens a window.
