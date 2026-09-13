@@ -22,7 +22,8 @@ class SecurityTest(unittest.TestCase):
         record = {'schemaVersion': 1, 'id': 'claude', 'limits': [{'percent': .4, 'label': 'Weekly'}]}
         for stamp, forced in ((None, False), (1000000, False), (4600000, True)):
             cache = None if stamp is None else {'fetchedAtMs': stamp, 'limits': record['limits']}
-            with patch.object(c, 'read_probe_cache', return_value=cache), patch.object(c.time, 'time', return_value=1000), patch.object(c, 'run_collector', return_value=record) as run:
+            with patch.object(c, 'read_probe_cache', return_value=cache), patch.object(c.time, 'time', return_value=1000), patch.object(c, 'run_collector', return_value=record) as run, \
+                    patch.object(c.Path, 'is_file', return_value=True), patch.object(c.os, 'access', return_value=True):
                 c.collect('claude')
                 command = run.call_args.args[0]
                 self.assertEqual(command[0], '/usr/share/omarchy/bin/omarchy-agent-usage-claude')
