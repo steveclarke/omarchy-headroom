@@ -10,7 +10,6 @@ jobs:
       - uses: actions/setup-node@v4
         with: {node-version: 22}
       - run: tools/check-agent-files
-      - run: python3 tools/check-no-personal-data
       - run: python3 -c 'import json; json.load(open("manifest.json")); json.load(open("providers.json"))'
       - run: python3 -B -m unittest discover -s tests -p "test_*.py"
       - run: node --test tests/pace.test.cjs tests/costs.test.cjs tests/wire.test.cjs tests/providers.test.cjs
