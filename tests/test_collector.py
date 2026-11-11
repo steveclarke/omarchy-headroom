@@ -83,12 +83,12 @@ class CollectorTest(unittest.TestCase):
                 c.run_collector([sys.executable,'-c',script,str(pid_file)],timeout=.3)
             pid = int(pid_file.read_text())
             stat = Path(f'/proc/{pid}/stat')
-            # A killed child can briefly remain a zombie until init reaps it.
+            # A killed child can briefly remain a zombie (Z) or be mid-teardown (X) until init reaps it.
             try:
                 state = stat.read_text().rsplit(')', 1)[1].split()[0]
             except (FileNotFoundError, ProcessLookupError):
                 state = None
-            self.assertIn(state, (None, 'Z'))
+            self.assertIn(state, (None, 'Z', 'X'))
 
     def test_launcher_kill_stops_collectors_and_grandchildren(self):
         def alive(pid):
