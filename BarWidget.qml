@@ -1,5 +1,6 @@
 import QtQuick
 import qs.Commons
+import qs.Commons as Commons
 import qs.Ui
 import "Model.js" as Model
 import "Pace.js" as Pace
@@ -126,7 +127,7 @@ BarWidget {
             visible: text !== ""
             width: Style.bar.iconCanvas
             anchors.verticalCenter: parent.verticalCenter
-            color: text === "!" ? button.foreground : root.bar ? root.bar.urgent : Color.urgent
+            color: text === "!" ? button.foreground : root.bar ? root.bar.urgent : Commons.Color.urgent
             font.family: button.fontFamily
             font.pixelSize: Style.bar.iconFont
             renderType: Text.NativeRendering

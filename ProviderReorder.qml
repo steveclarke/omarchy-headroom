@@ -1,5 +1,6 @@
 import QtQuick
 import qs.Commons
+import qs.Commons as Commons
 
 // One drag session per list. Persist only after release, never while delegates move.
 QtObject {
@@ -33,20 +34,20 @@ QtObject {
       height: Style.space(7)
       y: Math.max(0, Math.min(root.container.height - height, root.dropY - height / 2))
       visible: root.active && root.inside
-      color: Color.popups.background
+      color: Commons.Color.popups.background
       Rectangle {
         anchors.verticalCenter: parent.verticalCenter
         width: parent.width; height: Style.space(3)
-        color: Color.accent
+        color: Commons.Color.accent
       }
       Rectangle {
         width: Style.space(7); height: width
-        color: Color.accent
+        color: Commons.Color.accent
       }
       Rectangle {
         anchors.right: parent.right
         width: Style.space(7); height: width
-        color: Color.accent
+        color: Commons.Color.accent
       }
     }
   }

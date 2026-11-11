@@ -1,5 +1,6 @@
 import QtQuick
 import qs.Commons
+import qs.Commons as Commons
 
 MouseArea {
   id: root
@@ -7,7 +8,7 @@ MouseArea {
   required property Item providerItem
   required property string providerName
   objectName: "reorder-" + providerItem.providerId
-  property color ink: Color.popups.text
+  property color ink: Commons.Color.popups.text
   width: Style.space(24)
   height: Style.space(28)
   hoverEnabled: true

@@ -1,5 +1,6 @@
 import QtQuick
 import qs.Commons
+import qs.Commons as Commons
 import qs.Ui
 import qs.Ui as Ui
 import "Providers.js" as Providers
@@ -102,7 +103,7 @@ Column {
       z: orderDrag.dragged === providerRow && orderDrag.active ? 1 : 0
       opacity: orderDrag.active && orderDrag.dragged !== providerRow ? 0.45 : 1
       transform: Translate { y: orderDrag.dragged === providerRow ? orderDrag.offset : 0 }
-      Rectangle { anchors.fill: parent; color: Color.popups.background; visible: orderDrag.dragged === providerRow && orderDrag.active }
+      Rectangle { anchors.fill: parent; color: Commons.Color.popups.background; visible: orderDrag.dragged === providerRow && orderDrag.active }
       Row {
         width: parent.width
         anchors.verticalCenter: parent.verticalCenter

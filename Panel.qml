@@ -3,6 +3,7 @@ import QtQuick
 import QtQuick.Controls
 import Quickshell
 import qs.Commons
+import qs.Commons as Commons
 import qs.Ui
 import qs.Ui as Ui
 import "Model.js" as Model
@@ -34,12 +35,12 @@ Panel {
   readonly property var providers: service ? service.providers : []
   readonly property var costs: service ? service.costs : Costs.empty([])
   readonly property int period: service ? service.costPeriod : 0
-  readonly property color surface: Color.popups.background
-  readonly property color foreground: Color.popups.text
+  readonly property color surface: Commons.Color.popups.background
+  readonly property color foreground: Commons.Color.popups.text
   readonly property color group: surface
-  readonly property color track: Style.selectedFillFor(foreground, Color.accent)
+  readonly property color track: Style.selectedFillFor(foreground, Commons.Color.accent)
   readonly property color dim: legible(mix(foreground, surface, 0.22), surface)
-  readonly property color urgent: legible(Color.urgent, group)
+  readonly property color urgent: legible(Commons.Color.urgent, group)
   readonly property color caution: surface.hslLightness > 0.5 ? "#c49a16" : "#edc35b"
   readonly property color cautionIcon: surface.hslLightness > 0.5 ? "#916900" : caution
   property bool settingsOpen: false
@@ -84,7 +85,7 @@ Panel {
   function refresh() { if (service) service.refresh() }
   function selectPeriod(index) { if (service) service.costPeriod = Math.max(0, Math.min(2, index)) }
   function meterColor(severity) {
-    return severity === "critical" ? urgent : severity === "warning" ? caution : Color.accent
+    return severity === "critical" ? urgent : severity === "warning" ? caution : Commons.Color.accent
   }
   component PlainLabel: Text {
     color: root.foreground
