@@ -4,6 +4,7 @@ import Quickshell
 import Quickshell.Io
 import Quickshell.Wayland
 import qs.Commons
+import qs.Commons as Commons
 import "app" as App
 import "app/Model.js" as Model
 import "app/Providers.js" as Providers
@@ -25,7 +26,7 @@ ShellRoot {
     id: host
     property string position: "top"
     property int barSize: 26
-    property color barForeground: Color.foreground
+    property color barForeground: Commons.Color.foreground
     property var activePopout: null
     property var shell: host
     property var clickTargets: []
