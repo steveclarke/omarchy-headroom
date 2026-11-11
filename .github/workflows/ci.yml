@@ -6,9 +6,9 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with: {node-version: 22}
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with: {node-version: 24}
       - run: tools/check-agent-files
       - run: python3 -c 'import json; json.load(open("manifest.json")); json.load(open("providers.json"))'
       - run: python3 -B -m unittest discover -s tests -p "test_*.py"

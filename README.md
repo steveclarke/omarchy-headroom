@@ -68,7 +68,7 @@ omarchy plugin enable omarchy.agents
 Update with `omarchy plugin update io.github.steveclarke.headroom`, if you use dollar estimates, rerun `bin/setup-costs` from the installed plugin directory to apply any pinned cost-reader update.
 If an update still shows the old behavior, run `omarchy restart shell` to clear the shell's compiled QML cache.
 
-Removing the plugin stops its workers and removes the plugin checkout. The separate `$XDG_DATA_HOME/headroom/ccusage-20.0.20` dependency directory remains, as do the provider CLIs, their credentials/history, and Omarchy's native usage caches. Headroom does not delete those shared files or restore the Agents widget automatically. Setup refuses redirected directories and never overwrites an existing version. If it reports a damaged installation, move that exact version directory aside and rerun setup; preserve it until the replacement works.
+Removing the plugin stops its workers and removes the plugin checkout. The separate `$XDG_DATA_HOME/headroom/ccusage-20.0.50` dependency directory remains, as do the provider CLIs, their credentials/history, and Omarchy's native usage caches. Headroom does not delete those shared files or restore the Agents widget automatically. Setup refuses redirected directories and never overwrites an existing version. If it reports a damaged installation, move that exact version directory aside and rerun setup; preserve it until the replacement works.
 
 ## Settings
 
@@ -95,9 +95,9 @@ List only the providers you use. Missing required files produce a nonzero exit s
 
 ## Cost estimates
 
-[ccusage](https://github.com/ccusage/ccusage) 20.0.20 reads local Claude Code and Codex history. Headroom calculates daily reports using refreshed online prices, with the reader’s bundled prices as a fallback (`--mode calculate`), so all usage is estimated on the same pricing basis. Recorded cost fields are not used. It retains only daily USD totals, not project names or model/token details. Cost reading runs separately from quota collection. Each worker has an isolated temporary home and an explicit path to just one provider’s history. No usage history is uploaded. `bin/setup-costs` installs the locked reader under `$XDG_DATA_HOME/headroom/ccusage-20.0.20` (default `~/.local/share/headroom/ccusage-20.0.20`), outside the validated plugin folder.
+[ccusage](https://github.com/ccusage/ccusage) 20.0.50 reads local Claude Code and Codex history. Headroom calculates daily reports using refreshed online prices, with the reader’s bundled prices as a fallback (`--mode calculate`), so all usage is estimated on the same pricing basis. Recorded cost fields are not used. It retains only daily USD totals, not project names or model/token details. Cost reading runs separately from quota collection. Each worker has an isolated temporary home and an explicit path to just one provider’s history. No usage history is uploaded. `bin/setup-costs` installs the locked reader under `$XDG_DATA_HOME/headroom/ccusage-20.0.50` (default `~/.local/share/headroom/ccusage-20.0.50`), outside the validated plugin folder.
 
-These are estimated API-equivalent usage values, **not subscription charges**. Coverage is this machine's available local history; it does not include sessions on other computers. Today and Yesterday use the local calendar; 30 Days includes today and the previous 29 days. A used model without positive cost evidence marks its provider incomplete. Available daily amounts and their combined total stay visible with `Partial estimate · some usage may be missing`; unpriced usage is excluded from those amounts. This warning can also appear for a genuinely free model with recorded activity. Failed, missing, or outdated reports show `—`. Model mappings, deduplication and pricing accuracy depend on the pinned reader; prices can change. Known limitation: ccusage 20.0.20 underestimates GPT-6 Astra requests above 272,000 input tokens because it misses the long-context surcharge even with refreshed pricing. Its Claude parser expects the compact JSONL emitted by the CLI and can ignore reformatted history; completeness checks cannot detect records that the reader itself skips.
+These are estimated API-equivalent usage values, **not subscription charges**. Coverage is this machine's available local history; it does not include sessions on other computers. Today and Yesterday use the local calendar; 30 Days includes today and the previous 29 days. A used model without positive cost evidence marks its provider incomplete. Available daily amounts and their combined total stay visible with `Partial estimate · some usage may be missing`; unpriced usage is excluded from those amounts. This warning can also appear for a genuinely free model with recorded activity. Failed, missing, or outdated reports show `—`. Model mappings, deduplication and pricing accuracy depend on the pinned reader; prices can change. Known limitation: ccusage 20.0.50 underestimates GPT-6 Astra requests above 272,000 input tokens because it misses the long-context surcharge even with refreshed pricing. Its Claude parser expects the compact JSONL emitted by the CLI and can ignore reformatted history; completeness checks cannot detect records that the reader itself skips.
 
 ## Data access and network
 
@@ -126,7 +126,7 @@ Run the checks with Node.js, Python 3, Qt 6 qmllint and Omarchy installed:
 python3 bin/check
 python3 tests/check-qml
 python3 tests/check-drag
-python3 tests/check-reader ~/.local/share/headroom/ccusage-20.0.20/node_modules/.bin/ccusage
+python3 tests/check-reader ~/.local/share/headroom/ccusage-20.0.50/node_modules/.bin/ccusage
 ```
 
 The reader integration check uses only generated histories, offline mode, and temporary homes; adjust the reader path when using a custom `XDG_DATA_HOME`.

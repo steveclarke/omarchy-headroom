@@ -56,7 +56,7 @@ class SecurityTest(unittest.TestCase):
             root = Path(directory)
             victim = root / 'victim'; victim.write_text('keep me')
             headroom = root / 'headroom'; headroom.mkdir(mode=0o700)
-            dest = headroom / 'ccusage-20.0.20'
+            dest = headroom / 'ccusage-20.0.50'
             with patch.dict(os.environ, XDG_DATA_HOME=str(root)), patch.object(setup.shutil, 'which', return_value='/usr/bin/false'), patch.object(setup.subprocess, 'run') as run:
                 dest.symlink_to(root, target_is_directory=True)
                 with self.assertRaises(OSError): setup.install()
@@ -69,7 +69,7 @@ class SecurityTest(unittest.TestCase):
     def test_matching_metadata_does_not_hide_a_missing_reader(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            dest = root / 'headroom/ccusage-20.0.20'
+            dest = root / 'headroom/ccusage-20.0.50'
             dest.mkdir(parents=True, mode=0o700)
             runtime = path.parents[1] / 'runtime'
             for name in ('package.json', 'bun.lock'):

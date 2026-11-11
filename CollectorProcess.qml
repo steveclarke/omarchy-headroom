@@ -66,7 +66,7 @@ Item {
       root.accepting = false
       try {
         if (exitCode !== 0) throw new Error("exit")
-        var doc = Wire.parse(root.buffer, root.costs, root.requestIds)
+        const doc = Wire.parse(root.buffer, root.costs, root.requestIds)
         root.buffer = ""
         root.completed(doc)
       } catch (e) { root.buffer = ""; root.failed() }

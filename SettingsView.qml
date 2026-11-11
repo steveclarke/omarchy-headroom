@@ -71,7 +71,7 @@ Column {
     onClicked: toggled()
     Keys.onSpacePressed: toggled()
     Keys.onReturnPressed: toggled()
-    ToggleSwitch {
+    Ui.ToggleSwitch {
       anchors.centerIn: parent
       checked: cell.checked
       interactive: false
@@ -145,7 +145,7 @@ Column {
           }
         }
       }
-      PanelSeparator { anchors.bottom: parent.bottom; foreground: root.ink }
+      Ui.PanelSeparator { anchors.bottom: parent.bottom; foreground: root.ink }
     }
   }
   PlainLabel {
