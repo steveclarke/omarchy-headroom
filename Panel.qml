@@ -44,7 +44,7 @@ Panel {
   property string orderError: ""
   ProviderReorder {
     id: detailDrag
-    container: content; repeater: providerRepeater
+    container: panelContent; repeater: providerRepeater
     onMoved: function(id, target, after) {
       root.orderError = root.service && root.service.savePreferences(Providers.reordered(root.service.preferences, id, target, after))
         ? "" : "Could not save this order. Try again."
@@ -92,7 +92,7 @@ Panel {
     open: root.opened
     focusTarget: root.settingsOpen ? settingsView : keys
     contentWidth: panel.fittedContentWidth(Style.space(400))
-    contentHeight: panel.fittedContentHeight(content.implicitHeight, Style.space(1000))
+    contentHeight: panel.fittedContentHeight(panelContent.implicitHeight, Style.space(1000))
     PanelKeyCatcher {
       id: keys
       blocked: root.settingsOpen || detailDrag.active || detailDrag.keyboardFocus
@@ -110,13 +110,13 @@ Panel {
       Flickable {
         id: scroll
         anchors.fill: parent
-        contentHeight: content.implicitHeight
+        contentHeight: panelContent.implicitHeight
         clip: true
         boundsBehavior: Flickable.StopAtBounds
         interactive: !detailDrag.active
         ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
         Column {
-          id: content
+          id: panelContent
           width: scroll.width
           spacing: Style.spacing.panelGap
           SettingsView {
@@ -145,7 +145,7 @@ Panel {
               z: detailDrag.dragged === providerGroup && detailDrag.active ? 1 : 0
               opacity: detailDrag.active && detailDrag.dragged !== providerGroup ? 0.45 : 1
               transform: Translate { y: detailDrag.dragged === providerGroup ? detailDrag.offset : 0 }
-              width: content.width
+              width: panelContent.width
               height: sectionLayout.implicitHeight
               Rectangle { anchors.fill: parent; color: root.surface; visible: detailDrag.dragged === providerGroup && detailDrag.active }
               Column {
