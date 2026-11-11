@@ -6,7 +6,6 @@ import "Wire.js" as Wire
 // diagnostics and malformed output out of the shared shell's model.
 Item {
   id: root
-  property bool costs: false
   property var providerIds: []
   property var requestIds: []
   property bool active: false
@@ -42,7 +41,7 @@ Item {
     // Positional arguments stay separate; provider IDs never become shell code.
     command: ["/usr/bin/sh", "-c", "script=$1; shift; /usr/bin/python3 -I -S \"$script\" --parent \"$$\" \"$@\" & wait", "headroom",
       decodeURIComponent(Qt.resolvedUrl("bin/headroom-collect").toString().replace(/^file:\/\//, ""))]
-      .concat(root.costs ? ["--costs"] : []).concat(["--providers"]).concat(root.requestIds)
+      .concat(["--providers"]).concat(root.requestIds)
     stdout: SplitParser {
       splitMarker: ""
       onRead: function(chunk) {
@@ -66,7 +65,7 @@ Item {
       root.accepting = false
       try {
         if (exitCode !== 0) throw new Error("exit")
-        const doc = Wire.parse(root.buffer, root.costs, root.requestIds)
+        const doc = Wire.parse(root.buffer, root.requestIds)
         root.buffer = ""
         root.completed(doc)
       } catch (e) { root.buffer = ""; root.failed() }

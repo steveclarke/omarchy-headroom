@@ -61,7 +61,7 @@ function tooltip(result) {
     : result.projected > 1
       ? "~" + Math.max(1, Math.round((result.projected - 1) * 100)) + "% over the allowance at reset."
       : "~" + Math.round(result.projected * 100) + "% used at reset."
-  return projection + " Based on average use since this window began, not recent activity or additional charges."
+  return projection + " Based on average use since this window began, not recent activity."
 }
 
 function severity(window, result, now, fresh) {

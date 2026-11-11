@@ -13,22 +13,15 @@ class SelectionTest(unittest.TestCase):
             buffer = io.BytesIO()
         output = Output()
         output.buffer = io.BytesIO()
-        with patch.object(c.sys, 'argv', ['headroom-collect'] + args), patch.object(c.sys, 'stdout', output), patch.object(c.signal, 'signal'), patch.object(c, 'collect', side_effect=lambda id: {'id': id}) as quotas, patch.object(c, 'collect_cost', side_effect=lambda id: {'id': id}) as costs:
+        with patch.object(c.sys, 'argv', ['headroom-collect'] + args), patch.object(c.sys, 'stdout', output), patch.object(c.signal, 'signal'), patch.object(c, 'collect', side_effect=lambda id: {'id': id}) as quotas:
             c.main()
-        return json.loads(output.buffer.getvalue()), quotas, costs
+        return json.loads(output.buffer.getvalue()), quotas
 
     def test_single_selection_and_explicit_empty_never_run_disabled_providers(self):
         for args, expected in [(['--providers', 'codex'], ['codex']), (['--providers'], [])]:
-            report, quotas, costs = self.dispatch(args)
+            report, quotas = self.dispatch(args)
             self.assertEqual([p['id'] for p in report['providers']], expected)
             self.assertEqual([call.args[0] for call in quotas.call_args_list], expected)
-            costs.assert_not_called()
-
-    def test_cost_selection_keeps_requested_order_and_does_not_request_quotas(self):
-        report, quotas, costs = self.dispatch(['--costs', '--providers', 'codex', 'claude'])
-        self.assertEqual([p['id'] for p in report['providers']], ['codex', 'claude'])
-        self.assertEqual({call.args[0] for call in costs.call_args_list}, {'codex', 'claude'})
-        quotas.assert_not_called()
 
     def test_invalid_or_duplicate_selection_rejected_before_collection(self):
         for ids in [['unknown'], ['claude', 'claude'], ['$(command)']]:

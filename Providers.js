@@ -33,10 +33,6 @@ function entry(config, id) {
 // `omarchy bar set` stores unquoted values as strings; the settings UI stores
 // real types. Accept both.
 function boolOf(value, fallback) { return typeof value === "boolean" ? value : value === "true" ? true : value === "false" ? false : fallback }
-function intOf(value) {
-  if (typeof value === "string" && /^-?\d{1,6}$/.test(value)) value = parseInt(value, 10)
-  return Number.isInteger(value) ? value : null
-}
 
 function normalize(items, raw) {
   raw = raw || {}
@@ -51,14 +47,13 @@ function normalize(items, raw) {
     // Retain the top-bar choice while disabled; legacy display values still work.
     modes[id] = {display: mode, showInBar: mode === "off" ? boolOf(p.showInBar, true) : mode === "bar"}
   })
-  var position = intOf(raw.costPosition)
-  return {providerOrder: order, providers: modes, showCosts: boolOf(raw.showCosts, true), costPosition: position === null ? 0 : Math.max(0, Math.min(order.length, position))}
+  return {providerOrder: order, providers: modes}
 }
 
-function selected(items, preferences, barOnly, costsOnly) {
+function selected(items, preferences, barOnly) {
   return preferences.providerOrder.filter(function(id) {
-    var mode = preferences.providers[id].display, p = find(items, id)
-    return p && mode !== "off" && (!barOnly || mode === "bar") && (!costsOnly || p.costs === true)
+    var mode = preferences.providers[id].display
+    return find(items, id) && mode !== "off" && (!barOnly || mode === "bar")
   })
 }
 
@@ -66,20 +61,11 @@ function mergedEntry(existing, preferences) {
   return Object.assign({}, existing, preferences)
 }
 
-// Cost is a panel section, never a provider or a collector ID.
-function panelOrder(preferences) {
-  var order = preferences.providerOrder.slice()
-  order.splice(preferences.costPosition || 0, 0, "cost")
-  return order
-}
-
 // Move relative to an ID so refreshes and hidden providers cannot change the target.
 function reordered(preferences, id, targetId, after) {
-  var next = JSON.parse(JSON.stringify(preferences)), order = panelOrder(next)
+  var next = JSON.parse(JSON.stringify(preferences)), order = next.providerOrder
   if (id === targetId || order.indexOf(id) < 0 || order.indexOf(targetId) < 0) return next
   order.splice(order.indexOf(id), 1)
   order.splice(order.indexOf(targetId) + (after ? 1 : 0), 0, id)
-  next.providerOrder = order.filter(function(value) { return value !== "cost" })
-  next.costPosition = order.indexOf("cost")
   return next
 }

@@ -1,6 +1,6 @@
 # Development guidance
 
-Keep this release focused on Claude Code and Codex quota visibility, local usage cost estimates, and forecasts.
+Keep this release focused on Claude Code and Codex quota visibility and forecasts.
 
 - Use the installed Omarchy shell's public plugin contracts and native components.
 - Read existing implementation before editing. Do not modify packaged Omarchy files.
@@ -11,4 +11,4 @@ Keep this release focused on Claude Code and Codex quota visibility, local usage
 - Test forecast arithmetic and failure states; verify actual QML rendering as well as lint.
 - Keep README status and instructions accurate. Do not claim unimplemented functionality works.
 
-Additional providers are welcome through proposals and pull requests. Describe the available quota or balance data, authentication requirements and any local cost support first. Add provider-specific synthetic fixtures for normal, unavailable and malformed responses. Preserve existing Claude/Codex behavior and avoid assuming every provider has weekly limits.
+Additional providers are welcome through proposals and pull requests. Describe the available quota or balance data, and authentication requirements first. Add provider-specific synthetic fixtures for normal, unavailable and malformed responses. Preserve existing Claude/Codex behavior and avoid assuming every provider has weekly limits.

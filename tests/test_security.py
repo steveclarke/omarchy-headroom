@@ -1,6 +1,3 @@
-import importlib.machinery
-import importlib.util
-import json
 import os
 from pathlib import Path
 import subprocess
@@ -9,13 +6,6 @@ import tempfile
 import unittest
 from unittest.mock import patch
 from test_collector import c
-
-path = Path(__file__).resolve().parents[1] / 'bin/setup-costs'
-loader = importlib.machinery.SourceFileLoader('setup_costs', str(path))
-spec = importlib.util.spec_from_loader(loader.name, loader)
-setup = importlib.util.module_from_spec(spec)
-loader.exec_module(setup)
-
 
 class SecurityTest(unittest.TestCase):
     def test_only_future_claude_cache_forces_native_probe(self):
@@ -50,50 +40,3 @@ class SecurityTest(unittest.TestCase):
         with self.assertRaises(c.CollectionError):
             c.run_collector([sys.executable, '-c', 'print("["*2000+"0"+"]"*2000)'])
         self.assertFalse(c.numeric(10**1000))
-
-    def test_setup_refuses_planted_destination_and_metadata_symlinks(self):
-        with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
-            victim = root / 'victim'; victim.write_text('keep me')
-            headroom = root / 'headroom'; headroom.mkdir(mode=0o700)
-            dest = headroom / 'ccusage-20.0.50'
-            with patch.dict(os.environ, XDG_DATA_HOME=str(root)), patch.object(setup.shutil, 'which', return_value='/usr/bin/false'), patch.object(setup.subprocess, 'run') as run:
-                dest.symlink_to(root, target_is_directory=True)
-                with self.assertRaises(OSError): setup.install()
-                dest.unlink(); dest.mkdir(mode=0o700)
-                (dest / 'package.json').symlink_to(victim)
-                with self.assertRaises(OSError): setup.install()
-                self.assertEqual(victim.read_text(), 'keep me')
-                run.assert_not_called()
-
-    def test_matching_metadata_does_not_hide_a_missing_reader(self):
-        with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
-            dest = root / 'headroom/ccusage-20.0.50'
-            dest.mkdir(parents=True, mode=0o700)
-            runtime = path.parents[1] / 'runtime'
-            for name in ('package.json', 'bun.lock'):
-                (dest / name).write_bytes((runtime / name).read_bytes())
-            with patch.dict(os.environ, XDG_DATA_HOME=str(root)), patch.object(setup.shutil, 'which', return_value='/usr/bin/false'):
-                with self.assertRaisesRegex(ValueError, 'Reader files are missing'):
-                    setup.install()
-            self.assertTrue((dest / 'bun.lock').is_file())
-
-    def test_failed_setup_removes_only_its_own_staging_directory(self):
-        with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
-            keep = root / 'keep'; keep.write_text('keep me')
-            with patch.dict(os.environ, XDG_DATA_HOME=str(root)), patch.object(setup.shutil, 'which', return_value='/usr/bin/false'), patch.object(setup.subprocess, 'run', side_effect=subprocess.CalledProcessError(1, 'fixture')):
-                with self.assertRaises(subprocess.CalledProcessError): setup.install()
-            self.assertEqual(list((root / 'headroom').iterdir()), [])
-            self.assertEqual(keep.read_text(), 'keep me')
-
-    def test_cost_environment_exposes_only_selected_history_and_no_preloads(self):
-        with patch.dict(os.environ, {'HOME': '/synthetic/home', 'CODEX_HOME': '/synthetic/codex',
-                        'CLAUDE_CONFIG_DIR': '/synthetic/claude', 'NODE_OPTIONS': '--require malicious',
-                        'OPENCODE_DATA_DIR': '/synthetic/other'}):
-            env = c.cost_environment('codex', '/empty')
-            self.assertEqual(env['CODEX_HOME'], '/synthetic/codex')
-            self.assertEqual(env['HOME'], '/empty')
-            for name in ('CLAUDE_CONFIG_DIR', 'NODE_OPTIONS', 'OPENCODE_DATA_DIR'):
-                self.assertNotIn(name, env)

@@ -53,16 +53,13 @@ function demo(now, mode) {
   return providers
 }
 
-// Use the same deadlines as the service timer, including the separate cost worker.
+// Use the same deadline as the service timer.
 function refreshLabel(service, now) {
   if (!service) return "Updates unavailable"
   if (service.demoMode !== "") return "Sample data"
-  if (service.refreshing || service.costsRefreshing) return "Updating…"
-  var deadlines = []
-  if (service.selectedIds.length) deadlines.push(service.nextRefreshAt)
-  if (service.costIds.length) deadlines.push(service.nextCostRefreshAt)
-  if (!deadlines.length) return "Updates paused"
-  var remaining = Math.min.apply(null, deadlines) - now
+  if (service.refreshing) return "Updating…"
+  if (!service.selectedIds.length) return "Updates paused"
+  var remaining = service.nextRefreshAt - now
   if (remaining <= 0) return "Next update soon"
   if (remaining < 60000) return "Next update in <1 min"
   return "Next update in " + Math.floor(remaining / 60000) + " min"

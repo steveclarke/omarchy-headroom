@@ -1,9 +1,6 @@
 ---
 name: Headroom
-description: A native Omarchy panel for remaining allowance and estimated usage costs.
-colors:
-  cost-claude: "#d77b5f"
-  cost-codex: "#279b80"
+description: A native Omarchy panel for remaining allowance and usage forecasts.
 typography:
   body:
     fontFamily: "monospace"
@@ -24,11 +21,11 @@ Headroom follows the installed Omarchy shell. The panel is flat, with the native
 - Text uses `Style.font.family` and the shared body, bodySmall, title, heading and display sizes. Layout uses `Style.spacing` and `Style.space()`.
 - Content width is fitted from `Style.space(400)`, and height from the content with a `Style.space(1000)` cap. A vertical Flickable handles shorter screens.
 - Provider sections and the footer use `PanelSeparator`. Quotas sit directly on the panel, without separate cards. Major gaps use `Style.spacing.panelGap`.
-- Buttons, period choices and switches use `qs.Ui.Button` and `ToggleSwitch`. The shell owns their corners, hover, focus, selected and pressed styles. Settings and Refresh retain their native gear and refresh glyphs.
+- Buttons and switches use `qs.Ui.Button` and `ToggleSwitch`. The shell owns their corners, hover, focus, selected and pressed styles. Settings and Refresh retain their native gear and refresh glyphs.
 
 ## Colors and readability
 
-Healthy quotas use `Color.accent`, warnings use yellow, and urgent limits start from `Color.urgent`. Tracks use `Style.selectedFillFor(foreground, Color.accent)`. Cost-ring colors identify providers and never color quota groups.
+Healthy quotas use `Color.accent`, warnings use yellow, and urgent limits start from `Color.urgent`. Tracks use `Style.selectedFillFor(foreground, Color.accent)`.
 
 Supporting text and urgency colors are adjusted toward the foreground to seek a calculated contrast ratio of at least 4.65 against the panel surface. Caution meters use `#c49a16` on light surfaces and `#edc35b` on dark surfaces. The hourglass uses `#916900` on light surfaces and the caution color on dark surfaces. Text and icons accompany all warning colors.
 
@@ -53,28 +50,20 @@ Meters are `Style.space(6)` high. Their ends follow the native corner radius, ca
 
 Warning icons use `Style.font.heading` (16 at the default size) for recognition, with a 4-unit text gap. Forecast text is secondary and normal weight. Hover explains the average-use basis.
 
-## Costs
-
-The optional Cost section retains Today, Yesterday and 30 Days as native button-group choices, followed by the ring and provider legend. The information icon explains that these are estimated API-equivalent USD values from this machine, not subscription charges. 30 Days includes today and the previous 29 calendar days.
-
-The ring uses a 134-unit canvas with a 24-unit stroke. Its total is rounded to whole dollars; named legend amounts show two decimals. Missing amounts make the combined total unavailable and leave the ring neutral. Fresh zeros remain zero. A text status distinguishes loading, unavailable and outdated costs. There are no usage trends, token charts or Extra Usage rows.
-
 ## Settings
 
-Settings uses one flat draggable row per item, with aligned **Enabled** and **Top bar** columns. Compact native ToggleSwitch controls have 44-unit click targets, explicit accessible names and keyboard focus. Cost has only Enabled; its top-bar cell is a dash. No nested toggle cards, per-provider status labels or preview content.
+Settings uses one flat draggable row per provider, with aligned **Enabled** and **Top bar** columns. Compact native ToggleSwitch controls have 44-unit click targets, explicit accessible names and keyboard focus. No nested toggle cards, per-provider status labels or preview content.
 
 Enabled controls collection and panel visibility. Disabling a provider stops its workers, disables its top-bar switch, and retains the top-bar choice. One shared explanation describes this. Changes save immediately across monitors; a rejected save retains the existing state and shows an error. Grips preserve pointer and Up/Down reordering, with the insertion marker and cancellation behavior shared with the main panel.
 
-Tab walks settings controls, Space activates them, and Done or Escape returns to details while keeping changes. Reordering restores settings focus; other changes preserve the focused control. S opens settings. Outside settings, the shell owns Tab panel switching and Escape dismissal; R or activation refreshes, arrows scroll/select periods, and 1–3 select cost periods.
+Tab walks settings controls, Space activates them, and Done or Escape returns to details while keeping changes. Reordering restores settings focus; other changes preserve the focused control. S opens settings. Outside settings, the shell owns Tab panel switching and Escape dismissal; R or activation refreshes, and arrows scroll.
 
-The footer has two explicit lines: Headroom, then Next update in X min (or Updating… / Sample data). The countdown follows the earliest enabled worker deadline, updates each second, and shows <1 min in the final minute. Both use the shared small body font and the second line never wraps. Settings and Refresh sit beside them.
+The footer has two explicit lines: Headroom, then Next update in X min (or Updating… / Sample data). The countdown follows the usage worker's next deadline, updates each second, and shows <1 min in the final minute. Both use the shared small body font and the second line never wraps. Settings and Refresh sit beside them.
 
 ## Verification
 
-Use synthetic usage for captures. Check both light and dark palettes, missing and stale readings, warning states, costs and settings, native keyboard behavior, and saved choices. Never publish private account data or surrounding desktop content. Preserve shared shell styling rather than changing global settings to accommodate Headroom.
+Use synthetic usage for captures. Check both light and dark palettes, missing and stale readings, warning states, settings, native keyboard behavior, and saved choices. Never publish private account data or surrounding desktop content. Preserve shared shell styling rather than changing global settings to accommodate Headroom.
 
-Cost has a draggable row in Settings and a grip beside its panel heading. Move it above, between, or below providers. Its position is retained when hidden; moving Cost does not change provider order in the bar.
-
-Cost periods fill one full-width row with equal-width choices. Settings uses the compact two-column matrix described above.
+Settings uses the compact two-column matrix described above.
 
 The panel captures its bar anchor on opening and keeps that position until it closes. Live bar width changes must not move Settings under the pointer. Reopening captures the current button position; native screen-edge fitting remains active.

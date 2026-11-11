@@ -8,7 +8,6 @@ import qs.Ui
 import qs.Ui as Ui
 import "Model.js" as Model
 import "Pace.js" as Pace
-import "Costs.js" as Costs
 import "Providers.js" as Providers
 
 Panel {
@@ -33,8 +32,6 @@ Panel {
   readonly property var service: bar && bar.shell ? bar.shell.serviceFor(moduleName) : null
   readonly property double now: service ? service.nowMs : Date.now()
   readonly property var providers: service ? service.providers : []
-  readonly property var costs: service ? service.costs : Costs.empty([])
-  readonly property int period: service ? service.costPeriod : 0
   readonly property color surface: Commons.Color.popups.background
   readonly property color foreground: Commons.Color.popups.text
   readonly property color group: surface
@@ -54,16 +51,12 @@ Panel {
       Qt.callLater(keys.forceActiveFocus)
     }
   }
-  readonly property var costProviders: service ? service.costIds.map(function(id) { return Providers.find(root.service.catalog, id) }) : []
-  readonly property var costAmounts: costProviders.map(function(p) { return Costs.amount(root.costs, p.id, root.period, root.now) })
   function showSettings() { if (service) { settingsOpen = true; detailDrag.cancel(); scroll.contentY = 0; settingsView.begin() } }
   function hideSettings() { settingsOpen = false; scroll.contentY = 0; keys.forceActiveFocus() }
   onOpenedChanged: {
     if (opened) captureAnchor()
     else { settingsOpen = false; detailDrag.cancel(); orderError = "" }
   }
-  readonly property var costTotal: Costs.total(costs, period, now)
-  readonly property string costMessage: Costs.message(costs, now)
   function mix(a, b, amount) {
     var first = Qt.color(a), second = Qt.color(b)
     return Qt.rgba(first.r + (second.r - first.r) * amount, first.g + (second.g - first.g) * amount, first.b + (second.b - first.b) * amount, 1)
@@ -81,9 +74,7 @@ Panel {
     }
     return foreground
   }
-  function money(value) { return value === null ? "—" : "$" + Number(value).toLocaleString(Qt.locale("en_US"), 'f', 2) }
   function refresh() { if (service) service.refresh() }
-  function selectPeriod(index) { if (service) service.costPeriod = Math.max(0, Math.min(2, index)) }
   function meterColor(severity) {
     return severity === "critical" ? urgent : severity === "warning" ? caution : Commons.Color.accent
   }
@@ -111,12 +102,10 @@ Panel {
       onTextKey: function(t) {
         if (t.toLowerCase() === "r") root.refresh()
         if (t.toLowerCase() === "s") root.showSettings()
-        if (["1", "2", "3"].indexOf(t) >= 0) root.selectPeriod(Number(t) - 1)
       }
       onActivateRequested: root.refresh()
       onMoveRequested: function(dx, dy) {
-        if (dx) root.selectPeriod(root.period + dx)
-        else scroll.contentY = Math.max(0, Math.min(scroll.contentHeight - scroll.height, scroll.contentY + dy * Style.space(40)))
+        if (dy) scroll.contentY = Math.max(0, Math.min(scroll.contentHeight - scroll.height, scroll.contentY + dy * Style.space(40)))
       }
       Flickable {
         id: scroll
@@ -146,9 +135,7 @@ Panel {
           }
           Repeater {
             id: providerRepeater
-            model: root.settingsOpen || !root.service ? [] : Providers.panelOrder(root.service.preferences).filter(function(id) {
-              return id === "cost" ? root.costProviders.length > 0 : !!Providers.find(root.providers, id)
-            })
+            model: root.settingsOpen || !root.service ? [] : root.service.preferences.providerOrder.filter(function(id) { return !!Providers.find(root.providers, id) })
             Item {
               id: providerGroup
               required property string modelData
@@ -168,168 +155,6 @@ Panel {
                 PanelSeparator { visible: providerGroup.index > 0; foreground: root.foreground }
                 Loader {
                   width: parent.width
-                  active: providerGroup.providerId === "cost"
-                  visible: active
-                  sourceComponent: Component {
-                    Column {
-                      id: costLayout
-                      width: providerGroup.width
-                      spacing: Style.space(10)
-                      Row {
-                        ProviderDragHandle {
-                          objectName: "reorder-main-cost"
-                          reorder: detailDrag; providerItem: providerGroup; providerName: "Cost"
-                          ink: root.dim
-                          anchors.verticalCenter: parent.verticalCenter
-                        }
-                        spacing: Style.space(8)
-                        PlainLabel { text: "Cost"; font.pixelSize: Style.font.heading; font.weight: Font.DemiBold }
-                        TintedIcon {
-                          anchors.verticalCenter: parent.verticalCenter
-                          width: Style.space(14); height: width
-                          iconSource: Qt.resolvedUrl("assets/info.svg")
-                          ink: root.dim
-                          Accessible.role: Accessible.StaticText
-                          Accessible.name: "Costs are estimated API-equivalent usage value in USD from this machine's local history, not subscription charges."
-                          MouseArea {
-                            anchors.fill: parent; hoverEnabled: true
-                            onEntered: if (root.bar) root.bar.showTooltip(this, "Estimated API-equivalent value in USD.\nLocal history on this machine; not subscription charges.\n30 Days includes today and the previous 29 calendar days.")
-                            onExited: if (root.bar) root.bar.hideTooltip(this)
-                          }
-                        }
-                      }
-                      Item {
-                        width: parent.width
-                        height: costContent.implicitHeight
-                        Column {
-                          id: costContent
-                          width: parent.width
-                          spacing: Style.space(16)
-                          Row {
-                            id: costPeriods
-                            width: parent.width
-                            spacing: Style.space(2)
-                            Repeater {
-                              model: ["Today", "Yesterday", "30 Days"]
-                              Ui.Button {
-                                required property string modelData
-                                required property int index
-                                width: (costPeriods.width - 2 * costPeriods.spacing) / 3
-                                text: modelData
-                                selected: root.period === index
-                                bordered: true
-                                foreground: root.foreground
-                                background: root.surface
-                                Accessible.role: Accessible.PageTab
-                                Accessible.name: text
-                                Accessible.selected: selected
-                                Accessible.description: "Cost period. Use left/right arrows or keys 1, 2, 3."
-                                onClicked: root.selectPeriod(index)
-                              }
-                  }
-                }
-                Item {
-                  width: parent.width; height: Style.space(134)
-                  Item {
-                    id: ringArea
-                    width: Style.space(134); height: width
-                    Canvas {
-                      id: ring
-                      anchors.fill: parent
-                      property var amounts: root.costAmounts
-                      property color emptyColor: root.track
-                      onAmountsChanged: requestPaint()
-                      onEmptyColorChanged: requestPaint()
-                      onPaint: {
-                        var ctx = getContext("2d")
-                        ctx.reset()
-                        var center = width / 2, radius = center - Style.space(13)
-                        ctx.lineWidth = Style.space(24)
-                        var sum = amounts.some(function(a) { return a === null }) ? 0 : amounts.reduce(function(a, b) { return a + b }, 0)
-                        ctx.strokeStyle = emptyColor
-                        ctx.beginPath(); ctx.arc(center, center, radius, 0, 2 * Math.PI); ctx.stroke()
-                        if (sum <= 0) return
-                        var start = -Math.PI / 2, colors = root.costProviders.map(function(p) { return p.color })
-                        var segments = amounts.filter(function(a) { return a > 0 }).length
-                        for (var i = 0; i < amounts.length; i++) {
-                          var sweep = amounts[i] / sum * 2 * Math.PI
-                          if (sweep > 0) {
-                            var gap = segments > 1 ? Math.min(0.018, sweep / 4) : 0
-                            ctx.strokeStyle = colors[i]
-                            ctx.beginPath(); ctx.arc(center, center, radius, start + gap, start + sweep - gap); ctx.stroke()
-                          }
-                          start += sweep
-                        }
-                      }
-                    }
-                    Column {
-                      anchors.centerIn: parent
-                      width: parent.width - Style.space(54)
-                      PlainLabel {
-                        width: parent.width; horizontalAlignment: Text.AlignHCenter
-                        text: root.costTotal === null ? "—" : "$" + Math.round(root.costTotal).toLocaleString(Qt.locale("en_US"), 'f', 0)
-                        font.pixelSize: Style.font.display; font.weight: Font.DemiBold
-                        minimumPixelSize: Style.space(12); fontSizeMode: Text.Fit
-                      }
-                      PlainLabel {
-                        width: parent.width; horizontalAlignment: Text.AlignHCenter
-                        text: "USD"; color: root.dim; font.pixelSize: Style.font.bodySmall
-                      }
-                    }
-                    Accessible.role: Accessible.StaticText
-                    Accessible.name: "Total estimated usage value: " + root.money(root.costTotal) + " USD. " + root.costMessage
-                  }
-                  Column {
-                    x: ringArea.width + Style.space(18)
-                    width: parent.width - x
-                    anchors.verticalCenter: parent.verticalCenter
-                    spacing: Style.space(12)
-                    Repeater {
-                      model: root.costProviders
-                      Item {
-                        id: legendRow
-                        required property var modelData
-                        required property int index
-                        width: parent.width; height: Style.space(20)
-                        Rectangle {
-                          id: dot
-                          width: Style.space(9); height: width; radius: width/2
-                          anchors.verticalCenter: parent.verticalCenter
-                          color: legendRow.modelData.color
-                        }
-                        PlainLabel {
-                          anchors.left: dot.right; anchors.leftMargin: Style.space(7)
-                          anchors.verticalCenter: parent.verticalCenter
-                          text: legendRow.modelData.shortName; font.pixelSize: Style.font.body
-                        }
-                        PlainLabel {
-                          width: Math.min(implicitWidth, parent.width * 0.52)
-                          anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter
-                          text: root.money(root.costAmounts[legendRow.index])
-                          font.pixelSize: Style.font.body
-                          minimumPixelSize: Style.space(10); fontSizeMode: Text.Fit
-                          horizontalAlignment: Text.AlignRight
-                          color: root.dim
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-            }
-            PlainLabel {
-              width: parent.width
-              text: root.costMessage
-              color: root.dim; font.pixelSize: Style.font.bodySmall
-              wrapMode: Text.WordWrap
-            }
-          }
-                  }
-                }
-                Loader {
-                  width: parent.width
-                  active: providerGroup.providerId !== "cost"
-                  visible: active
                   sourceComponent: Component {
                     Column {
                       id: providerLayout
@@ -529,7 +354,7 @@ Panel {
               text: "Refresh"
               iconText: "󰑐"
               foreground: root.foreground; bordered: true; iconSize: Style.font.icon
-              enabled: root.service !== null && root.providers.length > 0 && !root.service.refreshing && !root.service.costsRefreshing
+              enabled: root.service !== null && root.providers.length > 0 && !root.service.refreshing
               Accessible.name: "Refresh usage"
               onClicked: root.refresh()
             }

@@ -12,7 +12,7 @@ Column {
   required property color dim
   readonly property var preferences: service ? service.preferences : Providers.normalize([], {})
   // Changing a switch must not rebuild the focused provider controls.
-  readonly property string orderKey: Providers.panelOrder(preferences).join(",")
+  readonly property string orderKey: preferences.providerOrder.join(",")
   property string error: ""
   signal done()
   onVisibleChanged: if (!visible) orderDrag.cancel()
@@ -44,7 +44,6 @@ Column {
     apply(Providers.reordered(preferences, id, target, after))
     Qt.callLater(root.forceActiveFocus)
   }
-  function setCosts(value) { apply(Object.assign({}, preferences, {showCosts: value})) }
   function apply(value) {
     error = service && service.savePreferences(value) ? "" : "Could not save this change. Try again."
   }
@@ -96,7 +95,7 @@ Column {
       id: providerRow
       required property string modelData
       readonly property string providerId: modelData
-      readonly property var meta: modelData === "cost" ? {name: "Cost"} : Providers.find(root.service.catalog, modelData)
+      readonly property var meta: Providers.find(root.service.catalog, modelData)
       readonly property var preference: root.preferences.providers[modelData]
       width: root.width
       height: Style.space(48)
@@ -127,22 +126,17 @@ Column {
         SwitchCell {
           objectName: "enabled-" + providerRow.providerId
           accessibleName: "Enable " + providerRow.meta.name
-          checked: providerRow.modelData === "cost" ? root.preferences.showCosts : providerRow.preference.display !== "off"
-          onToggled: providerRow.modelData === "cost" ? root.setCosts(!checked) : root.setProviderEnabled(providerRow.modelData, !checked)
+          checked: providerRow.preference.display !== "off"
+          onToggled: root.setProviderEnabled(providerRow.modelData, !checked)
         }
         Item {
           width: root.controlWidth; height: Style.space(44)
           SwitchCell {
-            visible: providerRow.modelData !== "cost"
             objectName: "topbar-" + providerRow.providerId
             accessibleName: providerRow.meta.name + " in top bar"
             checked: !!providerRow.preference && providerRow.preference.showInBar
             enabled: !!providerRow.preference && providerRow.preference.display !== "off"
             onToggled: root.setShowInBar(providerRow.modelData, !checked)
-          }
-          PlainLabel {
-            visible: providerRow.modelData === "cost"
-            anchors.centerIn: parent; text: "—"; color: root.dim
           }
         }
       }

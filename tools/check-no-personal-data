@@ -15,7 +15,7 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-SCANNED = ("*.qml", "*.js", "*.json", "*.cjs", "*.py", "*.md", "*.sh", "check-qml", "check-drag", "check-reader")
+SCANNED = ("*.qml", "*.js", "*.json", "*.cjs", "*.py", "*.md", "*.sh", "check-qml", "check-drag")
 ALLOWED_HOME = re.compile(r"/home/(user|you|USER)\b")
 PATTERNS = [
     (re.compile(r"/home/[a-z][a-z0-9_-]*"), "a real home directory"),
