@@ -41,7 +41,7 @@ With your Claude Code or Codex CLI signed in, this enables allowance percentages
 
 Click the bar summary to open the panel. Right-click or middle-click refreshes; R or Enter refreshes inside the panel, and Escape closes it. Usage refreshes every five minutes. Repeated refresh requests within twenty seconds are coalesced.
 
-Headroom works with the built-in Agents display disabled. Its collectors are core Omarchy commands; the Agents widget does not need to run. To avoid two independent refresh loops:
+Headroom works alongside the built-in Agents display, which adds account switching. Its collectors are core Omarchy commands, so the Agents widget does not need to run. To avoid two independent refresh loops, disable it:
 
 ```sh
 omarchy plugin disable omarchy.agents
@@ -92,7 +92,7 @@ Only normalized quota fields reach the shell; raw collector output is discarded.
 
 - Headroom shows only windows exported by Omarchy's collectors. A provider can legitimately have a weekly allowance without a shared session allowance; Only reported windows appear in the panel. The current Codex collector does not export its separate model-specific pools.
 - Forecasts require a known window duration and a verified recent observation. Unknown windows still show their usage and reset time. A new or unused window has no meaningful burn rate yet.
-- Claude can silently fall back to cached values. Headroom checks the native usage-cache timestamp to detect this. A simultaneous check by another widget can temporarily leave Claude marked unverified; retry after twenty seconds. The native CLI owns login renewal.
+- Claude can silently fall back to cached values. On Omarchy 4.5 and later, Headroom uses the collector's own freshness report for the active Claude account; on older versions it checks the native usage-cache timestamp, and a simultaneous check by another widget can briefly leave Claude marked unverified. The native CLI owns login renewal.
 - There is one active account per provider. Headroom does not persist its own snapshots or support account switching/multi-account aggregation.
 - Native collectors may scan local history when their caches expire, although Headroom discards those statistics and displays only quota windows.
 - This proof of concept targets horizontal bars. Vertical layout is provisional.

@@ -39,6 +39,17 @@ class CollectorTest(unittest.TestCase):
         for cache in [None, {'fetchedAtMs':2500, 'limits':[]}, {'fetchedAtMs':999999, 'limits':self.limits}]:
             self.assertEqual(c.observation(self.record,'claude',2000,3000,None,cache)['state'], 'stale')
 
+    def test_collector_reported_freshness_is_used_per_active_account(self):
+        fresh = dict(self.record, limitsStale=False, limitsFetchedAt=2500)
+        result = c.observation(fresh, 'claude', 2000, 3000)
+        self.assertEqual((result['state'], result['observedAt']), ('fresh', 2500))
+        for record in [dict(self.record, limitsStale=True, limitsFetchedAt=2500),
+                       dict(self.record, limitsStale=False, limitsFetchedAt=0),
+                       dict(self.record, limitsStale=False, limitsFetchedAt=999999),
+                       dict(self.record, limitsStale=None, limitsFetchedAt=2500)]:
+            result = c.observation(record, 'claude', 2000, 3000)
+            self.assertEqual((result['state'], result['observedAt']), ('stale', 0))
+
     def test_codex_rpc_observation_and_plan(self):
         self.record['id'] = 'codex'
         self.assertEqual(c.observation(self.record,'codex',2000,3000)['observedAt'],3000)

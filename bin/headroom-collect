@@ -228,7 +228,16 @@ def observation(record, provider, started, finished, cache_before=None, cache_af
         raise CollectionError("No subscription limits reported")
     observed = finished
     state, message = "fresh", ""
-    if provider == "claude":
+    if provider == "claude" and "limitsStale" in record:
+        # Omarchy 4.5+ reports freshness itself, per active account; its
+        # per-account caches replace the single file read below.
+        stamp = record.get("limitsFetchedAt")
+        if record.get("limitsStale") is False and numeric(stamp) and 0 < stamp <= finished + 5000:
+            observed = stamp
+        else:
+            observed = 0
+            state, message = "stale", "Last reading · a fresh Claude check could not be verified"
+    elif provider == "claude":
         stamp = cache_after.get("fetchedAtMs") if cache_after else None
         previous = cache_before.get("fetchedAtMs") if cache_before else None
         verified = (numeric(stamp) and started - 1000 <= stamp <= finished + 5000
