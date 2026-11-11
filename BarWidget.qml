@@ -99,7 +99,7 @@ BarWidget {
         Row {
           id: chip
           required property var modelData
-          spacing: Style.space(6)
+          spacing: Style.space(4)
           TintedIcon {
             anchors.verticalCenter: parent.verticalCenter
             iconSource: Qt.resolvedUrl("assets/" + chip.modelData.icon)
@@ -112,14 +112,11 @@ BarWidget {
             textFormat: Text.PlainText
             id: value
             anchors.verticalCenter: parent.verticalCenter
-            width: Math.ceil(valueSize.width)
             text: Model.percentage(Model.find(chip.modelData, chip.modelData.headline), root.now)
-            horizontalAlignment: Text.AlignRight
             color: button.foreground
             font.family: button.fontFamily
             font.pixelSize: button.fontSize
             renderType: Text.NativeRendering
-            TextMetrics { id: valueSize; text: "100%"; font: value.font }
           }
           Text {
             textFormat: Text.PlainText
