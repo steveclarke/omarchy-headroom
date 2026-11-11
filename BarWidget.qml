@@ -103,7 +103,8 @@ BarWidget {
             anchors.verticalCenter: parent.verticalCenter
             iconSource: Qt.resolvedUrl("assets/" + chip.modelData.icon)
             ink: button.foreground
-            width: Style.bar.iconCanvas
+            // Same optical size as Omarchy's own bar glyphs.
+            width: Style.bar.iconSize
             height: width
           }
           Text {
