@@ -94,6 +94,9 @@ BarWidget {
       anchors.verticalCenter: parent.verticalCenter
       columns: root.vertical ? 1 : Math.max(1, root.providers.length)
       spacing: Style.space(12)
+      // A chip with the warning glyph is taller; centre chips so they share a midline.
+      verticalItemAlignment: Grid.AlignVCenter
+      horizontalItemAlignment: Grid.AlignHCenter
       Repeater {
         model: root.providers
         Row {
